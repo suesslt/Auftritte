@@ -1,20 +1,26 @@
 //
-//  AuftritteApp.swift
-//  Auftritte
+//  KeynotesApp.swift
+//  Keynotes
 //
-//  Created by Thomas Süssli on 18.02.2026.
+//  Created by Thomas Süssli on 08.02.2026.
 //
 
 import SwiftUI
 import SwiftData
 
 @main
-struct AuftritteApp: App {
+struct KeynotesApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Keynote.self,
+            KeynoteContact.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .automatic
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -30,3 +36,5 @@ struct AuftritteApp: App {
         .modelContainer(sharedModelContainer)
     }
 }
+
+
