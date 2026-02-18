@@ -256,10 +256,10 @@ class KeynotePDFGenerator {
         }
         
         // Primärer Kontakt
-        if let contact = keynote.primaryContact, contact.hasData {
-            var contactText = "Kontakt: \(contact.displayName)"
-            if !contact.email.isEmpty { contactText += " • \(contact.email)" }
-            if !contact.phone.isEmpty { contactText += " • \(contact.phone)" }
+        if keynote.contactHasData {
+            var contactText = "Kontakt: \(keynote.contactDisplayName)"
+            if !keynote.contactEmail.isEmpty { contactText += " • \(keynote.contactEmail)" }
+            if !keynote.contactPhone.isEmpty { contactText += " • \(keynote.contactPhone)" }
             lines.append(TextLine(text: contactText, y: currentY, attributes: regularAttributes, height: 16))
             currentY += 16
         }

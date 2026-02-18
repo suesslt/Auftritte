@@ -16,7 +16,10 @@ final class Keynote {
     var keynoteTheme: String = ""
     var duration: Double = 60 // in Minuten (CloudKit-kompatibel)
     var clientOrganization: String = ""
-    var primaryContact: KeynoteContact?
+    var contactFullName: String = ""
+    var contactEmail: String = ""
+    var contactPhone: String = ""
+    var contactLocalID: String? // Lokale CNContact-ID für "In Kontakte öffnen" (gerätespezifisch)
     var agreedFeeInCents: Int64 = 0 // Honorar in Cents/Rappen gespeichert (Decimal geht nicht in CloudKit)
     var targetAudience: String = ""
     var location: String = ""
@@ -25,6 +28,15 @@ final class Keynote {
     var calendarEventID: String? // EventKit Event Identifier
     var notes: String = ""
     var language: String = "" // Sprache des Auftritts
+    
+    // Computed properties für Kontakt-Darstellung (analog zu KeynoteContact)
+    var contactDisplayName: String {
+        contactFullName.isEmpty ? "Unbekannter Kontakt" : contactFullName
+    }
+    
+    var contactHasData: Bool {
+        !contactFullName.isEmpty || !contactEmail.isEmpty || !contactPhone.isEmpty
+    }
     
     // Computed property für Status
     var status: KeynoteStatus {
@@ -56,7 +68,10 @@ final class Keynote {
         keynoteTheme: String = "",
         duration: Double = 60,
         clientOrganization: String = "",
-        primaryContact: KeynoteContact? = nil,
+        contactFullName: String = "",
+        contactEmail: String = "",
+        contactPhone: String = "",
+        contactLocalID: String? = nil,
         agreedFee: Decimal = 0,
         targetAudience: String = "",
         location: String = "",
@@ -72,7 +87,10 @@ final class Keynote {
         self.keynoteTheme = keynoteTheme
         self.duration = duration
         self.clientOrganization = clientOrganization
-        self.primaryContact = primaryContact
+        self.contactFullName = contactFullName
+        self.contactEmail = contactEmail
+        self.contactPhone = contactPhone
+        self.contactLocalID = contactLocalID
         
         var result = agreedFee * Decimal(100)
         var rounded = Decimal()

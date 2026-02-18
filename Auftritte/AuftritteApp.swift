@@ -13,7 +13,6 @@ struct KeynotesApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Keynote.self,
-            KeynoteContact.self,
         ])
         
         let modelConfiguration = ModelConfiguration(

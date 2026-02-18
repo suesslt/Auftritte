@@ -61,8 +61,8 @@ struct KeynoteDetailView: View {
         .sheet(isPresented: $showingContactPicker) {
             ContactPickerView(
                 contactsService: contactsService,
-                onContactSelected: { keynoteContact in
-                    keynote.primaryContact = keynoteContact
+                onContactSelected: { identifier in
+                    contactsService.applyContact(from: identifier, to: keynote)
                 }
             )
         }
@@ -121,19 +121,18 @@ struct KeynoteDetailView: View {
     
     private var contactSection: some View {
         Section("Kontakt") {
-            if let contact = keynote.primaryContact {
-                // Neues System: Zeige KeynoteContact-Daten
+            if keynote.contactHasData {
                 HStack {
                     VStack(alignment: .leading) {
-                        Text(contact.displayName)
+                        Text(keynote.contactDisplayName)
                             .font(.headline)
-                        if !contact.email.isEmpty {
-                            Text(contact.email)
+                        if !keynote.contactEmail.isEmpty {
+                            Text(keynote.contactEmail)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        if !contact.phone.isEmpty {
-                            Text(contact.phone)
+                        if !keynote.contactPhone.isEmpty {
+                            Text(keynote.contactPhone)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

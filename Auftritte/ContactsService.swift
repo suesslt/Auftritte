@@ -80,38 +80,28 @@ class ContactsService: ObservableObject {
         return firstPhone.value.stringValue
     }
     
-    /// Create a KeynoteContact from a CNContact identifier
-    /// This extracts all relevant data and makes it iCloud-syncable
-    nonisolated func createKeynoteContact(from identifier: String) -> KeynoteContact? {
-        guard let contact = getContact(identifier: identifier) else {
-            return nil
-        }
+    /// Schreibt die Kontaktdaten eines CNContact direkt auf eine Keynote.
+    nonisolated func applyContact(from identifier: String, to keynote: Keynote) {
+        guard let contact = getContact(identifier: identifier) else { return }
         
         let formatter = CNContactFormatter()
-        let fullName = formatter.string(from: contact) ?? ""
-        let email = contact.emailAddresses.first?.value as String? ?? ""
-        let phone = contact.phoneNumbers.first?.value.stringValue ?? ""
-        
-        return KeynoteContact(
-            fullName: fullName,
-            email: email,
-            phone: phone,
-            localContactID: identifier
-        )
+        keynote.contactFullName = formatter.string(from: contact) ?? ""
+        keynote.contactEmail    = contact.emailAddresses.first?.value as String? ?? ""
+        keynote.contactPhone    = contact.phoneNumbers.first?.value.stringValue ?? ""
+        keynote.contactLocalID  = identifier
     }
     
-    /// Try to find a matching CNContact for a KeynoteContact
+    /// Try to find a matching CNContact for a Keynote's embedded contact data.
     /// This enables "Open in Contacts" feature even on different devices
     /// by matching name and email/phone
-    nonisolated func findMatchingContact(for keynoteContact: KeynoteContact) -> String? {
+    nonisolated func findMatchingContact(for keynote: Keynote) -> String? {
         // First try the stored local ID (works if on same device)
-        if let localID = keynoteContact.localContactID,
+        if let localID = keynote.contactLocalID,
            getContact(identifier: localID) != nil {
             return localID
         }
         
         // Otherwise try to find by email or name
-        // This is a best-effort match and may not always work
         let keysToFetch: [CNKeyDescriptor] = [
             CNContactGivenNameKey as CNKeyDescriptor,
             CNContactFamilyNameKey as CNKeyDescriptor,
@@ -124,10 +114,9 @@ class ContactsService: ObservableObject {
         do {
             var foundID: String?
             try contactStore.enumerateContacts(with: request) { contact, stop in
-                // Try to match by email first (most reliable)
-                if !keynoteContact.email.isEmpty {
+                if !keynote.contactEmail.isEmpty {
                     for emailAddr in contact.emailAddresses {
-                        if (emailAddr.value as String).lowercased() == keynoteContact.email.lowercased() {
+                        if (emailAddr.value as String).lowercased() == keynote.contactEmail.lowercased() {
                             foundID = contact.identifier
                             stop.pointee = true
                             return
@@ -135,10 +124,9 @@ class ContactsService: ObservableObject {
                     }
                 }
                 
-                // Fall back to name matching (less reliable)
                 let formatter = CNContactFormatter()
                 if let contactName = formatter.string(from: contact),
-                   contactName == keynoteContact.fullName {
+                   contactName == keynote.contactFullName {
                     foundID = contact.identifier
                     stop.pointee = true
                 }

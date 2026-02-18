@@ -21,7 +21,6 @@ struct CSVImportRow: Identifiable {
     let id = UUID()
     let lineNumber: Int
     let keynote: Keynote?
-    let contact: KeynoteContact?
     let rawEventName: String
     let error: String?
 }
@@ -110,7 +109,6 @@ actor CSVImporter {
             return CSVImportRow(
                 lineNumber: lineNumber,
                 keynote: nil,
-                contact: nil,
                 rawEventName: "(leer)",
                 error: "eventName ist leer."
             )
@@ -120,7 +118,6 @@ actor CSVImporter {
             return CSVImportRow(
                 lineNumber: lineNumber,
                 keynote: nil,
-                contact: nil,
                 rawEventName: rawEventName,
                 error: "Ungültiges Datum: \"\(fields["eventDate"] ?? "")\""
             )
@@ -150,6 +147,9 @@ actor CSVImporter {
             keynoteTheme: keynoteTheme,
             duration: duration,
             clientOrganization: clientOrganization,
+            contactFullName: fields["contactFullName"] ?? "",
+            contactEmail: fields["contactEmail"] ?? "",
+            contactPhone: fields["contactPhone"] ?? "",
             targetAudience: targetAudience,
             location: location,
             status: status,
@@ -161,25 +161,9 @@ actor CSVImporter {
         // Honorar direkt in Cents setzen (kein Rundungsfehler)
         keynote.agreedFeeInCents = agreedFeeInCents
         
-        // Kontakt erstellen – nur wenn mindestens ein Feld vorhanden
-        let contactName  = fields["contactFullName"] ?? ""
-        let contactEmail = fields["contactEmail"] ?? ""
-        let contactPhone = fields["contactPhone"] ?? ""
-        
-        var contact: KeynoteContact? = nil
-        if !contactName.isEmpty || !contactEmail.isEmpty || !contactPhone.isEmpty {
-            contact = KeynoteContact(
-                fullName: contactName,
-                email: contactEmail,
-                phone: contactPhone
-            )
-            keynote.primaryContact = contact
-        }
-        
         return CSVImportRow(
             lineNumber: lineNumber,
             keynote: keynote,
-            contact: contact,
             rawEventName: rawEventName,
             error: nil
         )

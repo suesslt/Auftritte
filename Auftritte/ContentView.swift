@@ -258,7 +258,7 @@ struct KeynoteRowView: View {
     var body: some View {
         KeynoteListItemView(
             keynote: keynote,
-            contactName: keynote.primaryContact?.fullName
+            contactName: keynote.contactHasData ? keynote.contactFullName : nil
         )
         .foregroundColor(.primary)
     }

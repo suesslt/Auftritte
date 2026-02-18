@@ -361,10 +361,6 @@ struct CSVImportView: View {
                         if isDuplicate { continue }
                     }
                     
-                    // Kontakt zuerst einfügen (Beziehung)
-                    if let contact = row.contact {
-                        modelContext.insert(contact)
-                    }
                     modelContext.insert(keynote)
                     importedCount += 1
                 }
@@ -427,9 +423,9 @@ private struct ImportRowView: View {
                             Text(keynote.clientOrganization)
                         }
                         
-                        if let contact = row.contact, !contact.fullName.isEmpty {
+                        if !keynote.contactFullName.isEmpty {
                             Text("·")
-                            Text(contact.fullName)
+                            Text(keynote.contactFullName)
                         }
                     }
                     .font(.caption)
@@ -478,5 +474,5 @@ private struct SummaryChip: View {
 
 #Preview {
     CSVImportView()
-        .modelContainer(for: [Keynote.self, KeynoteContact.self], inMemory: true)
+        .modelContainer(for: Keynote.self, inMemory: true)
 }

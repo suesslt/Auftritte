@@ -103,9 +103,9 @@ struct ContactPickerView: View {
     @StateObject private var viewModel: ContactPickerViewModel
     
     let contactsService: ContactsService
-    let onContactSelected: (KeynoteContact) -> Void
+    let onContactSelected: (String) -> Void
     
-    init(contactsService: ContactsService, onContactSelected: @escaping (KeynoteContact) -> Void) {
+    init(contactsService: ContactsService, onContactSelected: @escaping (String) -> Void) {
         self.contactsService = contactsService
         self.onContactSelected = onContactSelected
         self._viewModel = StateObject(wrappedValue: ContactPickerViewModel(contactsService: contactsService))
@@ -166,11 +166,9 @@ struct ContactPickerView: View {
         List {
             ForEach(viewModel.filteredContacts, id: \.identifier) { contact in
                 ContactRowButton(contact: contact) {
-                    // Erstelle KeynoteContact aus CNContact
-                    if let keynoteContact = contactsService.createKeynoteContact(from: contact.identifier) {
-                        onContactSelected(keynoteContact)
-                        dismiss()
-                    }
+                    // Übergib den CNContact-Identifier – der Aufrufer schreibt die Daten auf die Keynote
+                    onContactSelected(contact.identifier)
+                    dismiss()
                 }
             }
         }
@@ -264,8 +262,8 @@ extension Image {
 #Preview("Contact Picker") {
     ContactPickerView(
         contactsService: ContactsService(),
-        onContactSelected: { contact in
-            print("Kontakt ausgewählt: \(contact.displayName)")
+        onContactSelected: { identifier in
+            print("Kontakt ausgewählt: \(identifier)")
         }
     )
 }
