@@ -5,9 +5,9 @@
       location = "self:">
    </FileRef>
    <FileRef
-      location = "group:CSVImporter.swift">
+      location = "group:CSVExporter.swift">
    </FileRef>
    <FileRef
-      location = "group:CSVImportView.swift">
+      location = "group:CSVExportView.swift">
    </FileRef>
 </Workspace>

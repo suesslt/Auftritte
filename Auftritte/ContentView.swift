@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var showingStats = false
     @State private var showingPDFExport = false
     @State private var showingCSVImport = false
+    @State private var showingCSVExport = false
     @StateObject private var calendarService = CalendarService()
     @StateObject private var errorHandler = ErrorHandler()
 
@@ -144,6 +145,10 @@ struct ContentView: View {
                         Button(action: { showingCSVImport = true }) {
                             Label("CSV importieren", systemImage: "square.and.arrow.down.on.square")
                         }
+
+                        Button(action: { showingCSVExport = true }) {
+                            Label("CSV exportieren", systemImage: "square.and.arrow.up.on.square")
+                        }
                     } label: {
                         Label("Mehr", systemImage: "ellipsis.circle")
                     }
@@ -176,6 +181,9 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingCSVImport) {
                 CSVImportView()
+            }
+            .sheet(isPresented: $showingCSVExport) {
+                CSVExportView(keynotes: filteredKeynotes)
             }
             .onChange(of: filteredKeynotes.map { $0.id }) { oldValue, newValue in
                 // Wenn die Selection nicht mehr in der Liste ist, deselektieren
