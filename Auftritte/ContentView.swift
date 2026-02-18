@@ -18,6 +18,7 @@ struct ContentView: View {
     @State private var statusFilter: KeynoteStatus?
     @State private var showingStats = false
     @State private var showingPDFExport = false
+    @State private var showingCSVImport = false
     @StateObject private var calendarService = CalendarService()
     @StateObject private var errorHandler = ErrorHandler()
 
@@ -101,14 +102,14 @@ struct ContentView: View {
             .navigationTitle("Auftritte")
             .searchable(text: $searchText, prompt: "Suchen...")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .automatic) {
                     Menu {
                         Button(action: { statusFilter = nil }) {
                             Label("Alle", systemImage: statusFilter == nil ? "checkmark" : "")
                         }
-                        
+
                         Divider()
-                        
+
                         ForEach(KeynoteStatus.allCases) { status in
                             Button(action: { statusFilter = status }) {
                                 HStack {
@@ -127,22 +128,28 @@ struct ContentView: View {
                         Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                     }
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
+
+                ToolbarItem(placement: .automatic) {
                     Menu {
                         Button(action: { showingStats = true }) {
                             Label("Statistiken", systemImage: "chart.bar.fill")
                         }
-                        
+
                         Button(action: { exportPDF() }) {
                             Label("PDF exportieren", systemImage: "doc.fill")
+                        }
+                        
+                        Divider()
+                        
+                        Button(action: { showingCSVImport = true }) {
+                            Label("CSV importieren", systemImage: "square.and.arrow.down.on.square")
                         }
                     } label: {
                         Label("Mehr", systemImage: "ellipsis.circle")
                     }
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
+
+                ToolbarItem(placement: .primaryAction) {
                     Button(action: createNewKeynote) {
                         Label("Neuer Auftritt", systemImage: "plus")
                     }
@@ -165,10 +172,10 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showingPDFExport) {
-                if let pdfData = generatePDFData() {
-                    let tempURL = savePDFToTemp(pdfData)
-                    ShareSheet(items: [tempURL])
-                }
+                PDFExportView(keynotes: keynotes)
+            }
+            .sheet(isPresented: $showingCSVImport) {
+                CSVImportView()
             }
             .onChange(of: filteredKeynotes.map { $0.id }) { oldValue, newValue in
                 // Wenn die Selection nicht mehr in der Liste ist, deselektieren
@@ -242,65 +249,18 @@ struct ContentView: View {
     private func exportPDF() {
         showingPDFExport = true
     }
-    
-    private func generatePDFData() -> Data? {
-        return KeynotePDFGenerator.generatePDF(
-            keynotes: keynotes,
-            title: "Auftrittsübersicht",
-            generationDate: Date()
-        )
-    }
-    
-    private func savePDFToTemp(_ data: Data) -> URL {
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("Auftrittsübersicht.pdf")
-        try? data.write(to: tempURL)
-        return tempURL
-    }
 }
 
 // MARK: - Keynote Row View
 struct KeynoteRowView: View {
     let keynote: Keynote
-    
+
     var body: some View {
         KeynoteListItemView(
             keynote: keynote,
             contactName: keynote.primaryContact?.fullName
         )
-        .foregroundColor(.primary) // iPhone/iPad: Verhindert blaue Schrift bei Selektion
-    }
-}
-
-// MARK: - Share Sheet (UIKit Integration)
-
-/// UIKit Share Sheet für SwiftUI
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
-        
-        // iPad-spezifische Konfiguration für Popover
-        if let popoverController = controller.popoverPresentationController {
-            popoverController.sourceView = context.coordinator.sourceView
-            popoverController.sourceRect = context.coordinator.sourceView.bounds
-            popoverController.permittedArrowDirections = .any
-        }
-        
-        return controller
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
-        // Keine Updates erforderlich
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-    
-    class Coordinator {
-        let sourceView = UIView(frame: .zero)
+        .foregroundColor(.primary)
     }
 }
 

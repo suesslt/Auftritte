@@ -248,28 +248,16 @@ struct ContactRowButton: View {
         return "\(firstName)\(lastName)".uppercased()
     }
     
-    #if os(macOS)
-    private func platformImage(from data: Data) -> NSImage? {
-        NSImage(data: data)
-    }
-    #else
     private func platformImage(from data: Data) -> UIImage? {
         UIImage(data: data)
     }
-    #endif
 }
 
 // MARK: - Platform Image Extension
 extension Image {
-    #if os(macOS)
-    init(platformImage: NSImage) {
-        self.init(nsImage: platformImage)
-    }
-    #else
     init(platformImage: UIImage) {
         self.init(uiImage: platformImage)
     }
-    #endif
 }
 
 // MARK: - Preview

@@ -29,74 +29,103 @@ class KeynotePDFGenerator {
         
         // PDF-Format konfigurieren (A4 Querformat)
         let pageRect = CGRect(x: 0, y: 0, width: 842, height: 595) // A4 Querformat
-        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
         
-        let data = renderer.pdfData { context in
-            var yPosition: CGFloat = 60
-            let margin: CGFloat = 40
-            let pageWidth = pageRect.width - (margin * 2)
-            var currentPage = 1
-            
-            // Erste Seite beginnen
-            context.beginPage()
-            
-            // Titel zeichnen
-            yPosition = drawTitle(title, at: yPosition, pageWidth: pageWidth, margin: margin)
-            
-            // Erstellungsdatum zeichnen
-            yPosition = drawGenerationDate(generationDate, at: yPosition, pageWidth: pageWidth, margin: margin)
-            
-            // Trennlinie
-            yPosition = drawSeparator(at: yPosition, pageWidth: pageWidth, margin: margin)
-            
-            // Zusammenfassung
-            yPosition = drawSummary(count: sortedKeynotes.count, at: yPosition, pageWidth: pageWidth, margin: margin)
-            
-            yPosition += 20
-            
-            // Alle Keynotes durchlaufen
-            for (index, keynote) in sortedKeynotes.enumerated() {
-                // Neue Seite beginnen, wenn nicht genug Platz (250 statt 150 wegen mehr Inhalt)
-                if yPosition > pageRect.height - 250 {
-                    drawFooter(pageNumber: currentPage, pageRect: pageRect, margin: margin)
-                    context.beginPage()
-                    currentPage += 1
-                    yPosition = 60
-                }
-                
-                yPosition = drawKeynote(
-                    keynote,
-                    index: index + 1,
-                    at: yPosition,
-                    pageWidth: pageWidth,
-                    margin: margin
-                )
-                
-                yPosition += 25
-            }
-            
-            // Fußzeile für die letzte Seite
-            drawFooter(pageNumber: currentPage, pageRect: pageRect, margin: margin)
+        let pdfData = NSMutableData()
+        var mediaBox = pageRect
+        
+        guard let consumer = CGDataConsumer(data: pdfData as CFMutableData),
+              let pdfContext = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
+            return Data()
         }
         
-        return data
+        var yPosition: CGFloat = 60
+        let margin: CGFloat = 40
+        let pageWidth = pageRect.width - (margin * 2)
+        var currentPage = 1
+        
+        // Erste Seite beginnen
+        pdfContext.beginPDFPage(nil)
+        
+        // Titel zeichnen
+        yPosition = drawTitle(title, at: yPosition, pageRect: pageRect, pageWidth: pageWidth, margin: margin, context: pdfContext)
+        
+        // Erstellungsdatum zeichnen
+        yPosition = drawGenerationDate(generationDate, at: yPosition, pageRect: pageRect, pageWidth: pageWidth, margin: margin, context: pdfContext)
+        
+        // Trennlinie
+        yPosition = drawSeparator(at: yPosition, pageRect: pageRect, pageWidth: pageWidth, margin: margin, context: pdfContext)
+        
+        // Zusammenfassung
+        yPosition = drawSummary(count: sortedKeynotes.count, at: yPosition, pageRect: pageRect, pageWidth: pageWidth, margin: margin, context: pdfContext)
+        
+        yPosition += 20
+        
+        // Alle Keynotes durchlaufen
+        for (index, keynote) in sortedKeynotes.enumerated() {
+            // Neue Seite beginnen, wenn nicht genug Platz
+            if yPosition > pageRect.height - 250 {
+                drawFooter(pageNumber: currentPage, pageRect: pageRect, margin: margin, context: pdfContext)
+                pdfContext.endPDFPage()
+                pdfContext.beginPDFPage(nil)
+                currentPage += 1
+                yPosition = 60
+            }
+            
+            yPosition = drawKeynote(
+                keynote,
+                index: index + 1,
+                at: yPosition,
+                pageRect: pageRect,
+                pageWidth: pageWidth,
+                margin: margin,
+                context: pdfContext
+            )
+            
+            yPosition += 25
+        }
+        
+        // Fußzeile für die letzte Seite
+        drawFooter(pageNumber: currentPage, pageRect: pageRect, margin: margin, context: pdfContext)
+        pdfContext.endPDFPage()
+        pdfContext.closePDF()
+        
+        return pdfData as Data
     }
     
     // MARK: - Drawing Functions
     
-    private static func drawTitle(_ title: String, at yPosition: CGFloat, pageWidth: CGFloat, margin: CGFloat) -> CGFloat {
+    /// Converts a PDF coordinate (origin bottom-left) to a flipped coordinate (origin top-left)
+    private static func flip(_ rect: CGRect, in pageRect: CGRect) -> CGRect {
+        CGRect(
+            x: rect.origin.x,
+            y: pageRect.height - rect.origin.y - rect.height,
+            width: rect.width,
+            height: rect.height
+        )
+    }
+    
+    private static func drawText(_ text: String, in rect: CGRect, pageRect: CGRect, attributes: [NSAttributedString.Key: Any], context: CGContext) {
+        let flipped = flip(rect, in: pageRect)
+        let nsString = text as NSString
+
+        UIGraphicsPushContext(context)
+        nsString.draw(in: flipped, withAttributes: attributes)
+        UIGraphicsPopContext()
+    }
+    
+    private static func drawTitle(_ title: String, at yPosition: CGFloat, pageRect: CGRect, pageWidth: CGFloat, margin: CGFloat, context: CGContext) -> CGFloat {
         let titleAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 24, weight: .bold),
             .foregroundColor: UIColor.black
         ]
         
-        let titleRect = CGRect(x: margin, y: yPosition, width: pageWidth, height: 40)
-        title.draw(in: titleRect, withAttributes: titleAttributes)
+        let rect = CGRect(x: margin, y: yPosition, width: pageWidth, height: 40)
+        drawText(title, in: rect, pageRect: pageRect, attributes: titleAttributes, context: context)
         
         return yPosition + 40
     }
     
-    private static func drawGenerationDate(_ date: Date, at yPosition: CGFloat, pageWidth: CGFloat, margin: CGFloat) -> CGFloat {
+    private static func drawGenerationDate(_ date: Date, at yPosition: CGFloat, pageRect: CGRect, pageWidth: CGFloat, margin: CGFloat, context: CGContext) -> CGFloat {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .long
         dateFormatter.timeStyle = .none
@@ -109,28 +138,28 @@ class KeynotePDFGenerator {
             .foregroundColor: UIColor.darkGray
         ]
         
-        let dateRect = CGRect(x: margin, y: yPosition, width: pageWidth, height: 20)
-        dateString.draw(in: dateRect, withAttributes: dateAttributes)
+        let rect = CGRect(x: margin, y: yPosition, width: pageWidth, height: 20)
+        drawText(dateString, in: rect, pageRect: pageRect, attributes: dateAttributes, context: context)
         
         return yPosition + 25
     }
     
-    private static func drawSeparator(at yPosition: CGFloat, pageWidth: CGFloat, margin: CGFloat) -> CGFloat {
-        let context = UIGraphicsGetCurrentContext()
-        context?.saveGState()
+    private static func drawSeparator(at yPosition: CGFloat, pageRect: CGRect, pageWidth: CGFloat, margin: CGFloat, context: CGContext) -> CGFloat {
+        context.saveGState()
+        context.setStrokeColor(UIColor.lightGray.cgColor)
+        context.setLineWidth(1)
         
-        context?.setStrokeColor(UIColor.lightGray.cgColor)
-        context?.setLineWidth(1)
-        context?.move(to: CGPoint(x: margin, y: yPosition))
-        context?.addLine(to: CGPoint(x: margin + pageWidth, y: yPosition))
-        context?.strokePath()
+        let flippedY = pageRect.height - yPosition
+        context.move(to: CGPoint(x: margin, y: flippedY))
+        context.addLine(to: CGPoint(x: margin + pageWidth, y: flippedY))
+        context.strokePath()
         
-        context?.restoreGState()
+        context.restoreGState()
         
         return yPosition + 20
     }
     
-    private static func drawSummary(count: Int, at yPosition: CGFloat, pageWidth: CGFloat, margin: CGFloat) -> CGFloat {
+    private static func drawSummary(count: Int, at yPosition: CGFloat, pageRect: CGRect, pageWidth: CGFloat, margin: CGFloat, context: CGContext) -> CGFloat {
         let summaryText = "Anzahl Auftritte: \(count)"
         
         let summaryAttributes: [NSAttributedString.Key: Any] = [
@@ -138,8 +167,8 @@ class KeynotePDFGenerator {
             .foregroundColor: UIColor.black
         ]
         
-        let summaryRect = CGRect(x: margin, y: yPosition, width: pageWidth, height: 20)
-        summaryText.draw(in: summaryRect, withAttributes: summaryAttributes)
+        let rect = CGRect(x: margin, y: yPosition, width: pageWidth, height: 20)
+        drawText(summaryText, in: rect, pageRect: pageRect, attributes: summaryAttributes, context: context)
         
         return yPosition + 25
     }
@@ -148,8 +177,10 @@ class KeynotePDFGenerator {
         _ keynote: Keynote,
         index: Int,
         at yPosition: CGFloat,
+        pageRect: CGRect,
         pageWidth: CGFloat,
-        margin: CGFloat
+        margin: CGFloat,
+        context: CGContext
     ) -> CGFloat {
         var currentY = yPosition
         let startY = currentY
@@ -181,78 +212,67 @@ class KeynotePDFGenerator {
             .foregroundColor: UIColor.darkGray
         ]
         
+        // Collect all lines to draw so we only compute once
+        struct TextLine {
+            let text: String
+            let y: CGFloat
+            let attributes: [NSAttributedString.Key: Any]
+            let height: CGFloat
+        }
+        var lines: [TextLine] = []
+        
         // Event-Name
-        let headerText = keynote.eventName
-        let headerRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 20)
-        headerText.draw(in: headerRect, withAttributes: headerAttributes)
+        lines.append(TextLine(text: keynote.eventName, y: currentY, attributes: headerAttributes, height: 20))
         currentY += 22
         
         // Datum und Status
         let dateString = dateFormatter.string(from: keynote.eventDate)
         let statusText = "\(dateString) • Status: \(keynote.status.rawValue)"
-        let statusRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 18)
-        statusText.draw(in: statusRect, withAttributes: secondaryAttributes)
+        lines.append(TextLine(text: statusText, y: currentY, attributes: secondaryAttributes, height: 18))
         currentY += 18
         
         // Keynote-Titel
         if !keynote.keynoteTitle.isEmpty {
-            let titleText = "Titel: \(keynote.keynoteTitle)"
-            let titleRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 16)
-            titleText.draw(in: titleRect, withAttributes: regularAttributes)
+            lines.append(TextLine(text: "Titel: \(keynote.keynoteTitle)", y: currentY, attributes: regularAttributes, height: 16))
             currentY += 16
         }
         
         // Thema
         if !keynote.keynoteTheme.isEmpty {
-            let themeText = "Thema: \(keynote.keynoteTheme)"
-            let themeRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 16)
-            themeText.draw(in: themeRect, withAttributes: regularAttributes)
+            lines.append(TextLine(text: "Thema: \(keynote.keynoteTheme)", y: currentY, attributes: regularAttributes, height: 16))
             currentY += 16
         }
         
         // Ort
         if !keynote.location.isEmpty {
-            let locationText = "Ort: \(keynote.location)"
-            let locationRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 16)
-            locationText.draw(in: locationRect, withAttributes: regularAttributes)
+            lines.append(TextLine(text: "Ort: \(keynote.location)", y: currentY, attributes: regularAttributes, height: 16))
             currentY += 16
         }
         
         // Organisation
         if !keynote.clientOrganization.isEmpty {
-            let orgText = "Organisation: \(keynote.clientOrganization)"
-            let orgRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 16)
-            orgText.draw(in: orgRect, withAttributes: regularAttributes)
+            lines.append(TextLine(text: "Organisation: \(keynote.clientOrganization)", y: currentY, attributes: regularAttributes, height: 16))
             currentY += 16
         }
         
         // Primärer Kontakt
         if let contact = keynote.primaryContact, contact.hasData {
             var contactText = "Kontakt: \(contact.displayName)"
-            if !contact.email.isEmpty {
-                contactText += " • \(contact.email)"
-            }
-            if !contact.phone.isEmpty {
-                contactText += " • \(contact.phone)"
-            }
-            let contactRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 16)
-            contactText.draw(in: contactRect, withAttributes: regularAttributes)
+            if !contact.email.isEmpty { contactText += " • \(contact.email)" }
+            if !contact.phone.isEmpty { contactText += " • \(contact.phone)" }
+            lines.append(TextLine(text: contactText, y: currentY, attributes: regularAttributes, height: 16))
             currentY += 16
         }
         
         // Zielpublikum
         if !keynote.targetAudience.isEmpty {
-            let audienceText = "Zielpublikum: \(keynote.targetAudience)"
-            let audienceRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 16)
-            audienceText.draw(in: audienceRect, withAttributes: regularAttributes)
+            lines.append(TextLine(text: "Zielpublikum: \(keynote.targetAudience)", y: currentY, attributes: regularAttributes, height: 16))
             currentY += 16
         }
         
         // Sprache
         if !keynote.language.isEmpty {
-            let languageText = "Sprache: \(keynote.language)"
-            let languageRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 16)
-            languageText.draw(in: languageRect, withAttributes: regularAttributes)
+            lines.append(TextLine(text: "Sprache: \(keynote.language)", y: currentY, attributes: regularAttributes, height: 16))
             currentY += 16
         }
         
@@ -262,140 +282,64 @@ class KeynotePDFGenerator {
         feeFormatter.numberStyle = .currency
         feeFormatter.currencyCode = "CHF"
         let feeString = feeFormatter.string(from: keynote.agreedFee as NSDecimalNumber) ?? "CHF 0.00"
-        
         let infoText = "\(durationText) • Honorar: \(feeString)"
-        let infoRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 16)
-        infoText.draw(in: infoRect, withAttributes: secondaryAttributes)
+        lines.append(TextLine(text: infoText, y: currentY, attributes: secondaryAttributes, height: 16))
         currentY += 16
         
         // Anfragedatum
         let requestDateString = requestDateFormatter.string(from: keynote.requestDate)
         let requestText = "Angefragt am: \(requestDateString)"
-        let requestRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 16)
-        requestText.draw(in: requestRect, withAttributes: secondaryAttributes)
+        lines.append(TextLine(text: requestText, y: currentY, attributes: secondaryAttributes, height: 16))
         currentY += 16
         
         // Notizen (falls vorhanden)
         if !keynote.notes.isEmpty {
-            let notesText = "Notizen: \(keynote.notes)"
-            // Verwende NSString für multi-line text drawing
-            let notesNSString = notesText as NSString
-            let notesRect = CGRect(x: margin + contentMargin, y: currentY, width: pageWidth - 20, height: 40)
-            notesNSString.draw(in: notesRect, withAttributes: secondaryAttributes)
+            lines.append(TextLine(text: "Notizen: \(keynote.notes)", y: currentY, attributes: secondaryAttributes, height: 40))
             currentY += 42
         }
         
-        // Hintergrund zeichnen (nachträglich, damit wir die korrekte Höhe kennen)
+        // Hintergrund zeichnen
         let totalHeight = currentY - startY + 10
         let backgroundRect = CGRect(x: margin, y: startY - 5, width: pageWidth, height: totalHeight)
-        let backgroundColor = index % 2 == 0 ? UIColor(white: 0.95, alpha: 1.0) : UIColor.white
+        let backgroundColor = index % 2 == 0
+            ? UIColor(white: 0.95, alpha: 1.0)
+            : UIColor.white
         
-        let context = UIGraphicsGetCurrentContext()
-        context?.saveGState()
-        context?.setFillColor(backgroundColor.cgColor)
+        context.saveGState()
+        context.setFillColor(backgroundColor.cgColor)
         
-        let path = UIBezierPath(roundedRect: backgroundRect, cornerRadius: 8)
-        path.fill()
+        let flippedBg = flip(backgroundRect, in: pageRect)
+        let path = CGPath(roundedRect: flippedBg, cornerWidth: 8, cornerHeight: 8, transform: nil)
+        context.addPath(path)
+        context.fillPath()
+        context.restoreGState()
         
-        context?.restoreGState()
-        
-        // Alle Texte noch einmal zeichnen (über dem Hintergrund)
-        // Event-Name
-        headerText.draw(in: CGRect(x: margin + contentMargin, y: startY, width: pageWidth - 20, height: 20), withAttributes: headerAttributes)
-        var redrawY = startY + 22
-        
-        // Datum und Status
-        statusText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 18), withAttributes: secondaryAttributes)
-        redrawY += 18
-        
-        // Keynote-Titel
-        if !keynote.keynoteTitle.isEmpty {
-            let titleText = "Titel: \(keynote.keynoteTitle)"
-            titleText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 16), withAttributes: regularAttributes)
-            redrawY += 16
-        }
-        
-        // Thema
-        if !keynote.keynoteTheme.isEmpty {
-            let themeText = "Thema: \(keynote.keynoteTheme)"
-            themeText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 16), withAttributes: regularAttributes)
-            redrawY += 16
-        }
-        
-        // Ort
-        if !keynote.location.isEmpty {
-            let locationText = "Ort: \(keynote.location)"
-            locationText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 16), withAttributes: regularAttributes)
-            redrawY += 16
-        }
-        
-        // Organisation
-        if !keynote.clientOrganization.isEmpty {
-            let orgText = "Organisation: \(keynote.clientOrganization)"
-            orgText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 16), withAttributes: regularAttributes)
-            redrawY += 16
-        }
-        
-        // Primärer Kontakt
-        if let contact = keynote.primaryContact, contact.hasData {
-            var contactText = "Kontakt: \(contact.displayName)"
-            if !contact.email.isEmpty {
-                contactText += " • \(contact.email)"
-            }
-            if !contact.phone.isEmpty {
-                contactText += " • \(contact.phone)"
-            }
-            contactText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 16), withAttributes: regularAttributes)
-            redrawY += 16
-        }
-        
-        // Zielpublikum
-        if !keynote.targetAudience.isEmpty {
-            let audienceText = "Zielpublikum: \(keynote.targetAudience)"
-            audienceText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 16), withAttributes: regularAttributes)
-            redrawY += 16
-        }
-        
-        // Sprache
-        if !keynote.language.isEmpty {
-            let languageText = "Sprache: \(keynote.language)"
-            languageText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 16), withAttributes: regularAttributes)
-            redrawY += 16
-        }
-        
-        // Dauer und Honorar
-        infoText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 16), withAttributes: secondaryAttributes)
-        redrawY += 16
-        
-        // Anfragedatum
-        requestText.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 16), withAttributes: secondaryAttributes)
-        redrawY += 16
-        
-        // Notizen
-        if !keynote.notes.isEmpty {
-            let notesText = "Notizen: \(keynote.notes)"
-            let notesNSString = notesText as NSString
-            notesNSString.draw(in: CGRect(x: margin + contentMargin, y: redrawY, width: pageWidth - 20, height: 40), withAttributes: secondaryAttributes)
+        // Alle Texte über dem Hintergrund zeichnen
+        for line in lines {
+            let rect = CGRect(x: margin + contentMargin, y: line.y, width: pageWidth - 20, height: line.height)
+            drawText(line.text, in: rect, pageRect: pageRect, attributes: line.attributes, context: context)
         }
         
         return currentY
     }
     
-    private static func drawFooter(pageNumber: Int, pageRect: CGRect, margin: CGFloat) {
+    private static func drawFooter(pageNumber: Int, pageRect: CGRect, margin: CGFloat, context: CGContext) {
         let footerText = "Seite \(pageNumber)"
         let footerAttributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 10, weight: .regular),
             .foregroundColor: UIColor.darkGray
         ]
         
-        let footerSize = footerText.size(withAttributes: footerAttributes)
+        let nsString = footerText as NSString
+        let size = nsString.size(withAttributes: footerAttributes)
+        let footerY = pageRect.height - margin / 2
         let footerRect = CGRect(
-            x: (pageRect.width - footerSize.width) / 2,
-            y: pageRect.height - margin / 2,
-            width: footerSize.width,
-            height: footerSize.height
+            x: (pageRect.width - size.width) / 2,
+            y: footerY,
+            width: size.width,
+            height: size.height
         )
         
-        footerText.draw(in: footerRect, withAttributes: footerAttributes)
+        drawText(footerText, in: footerRect, pageRect: pageRect, attributes: footerAttributes, context: context)
     }
 }
