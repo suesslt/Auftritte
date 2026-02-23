@@ -75,7 +75,7 @@ struct CSVExportView: View {
 
             VStack(spacing: 12) {
                 // Der Button dient gleichzeitig als Popover-Anker auf dem iPad
-                ShareButton(url: url)
+                ShareButton(url: url, onShared: { dismiss() })
 
                 Button("Fertig") { dismiss() }
             }
@@ -162,6 +162,7 @@ private enum ExportPhase {
 
 private struct ShareButton: View {
     let url: URL
+    var onShared: (() -> Void)? = nil
     @State private var showSheet = false
 
     var body: some View {
@@ -174,7 +175,7 @@ private struct ShareButton: View {
         .controlSize(.regular)
         .background {
             // Unsichtbarer Anker-View, der den UIActivityViewController präsentiert
-            SharePresenter(url: url, isPresented: $showSheet)
+            SharePresenter(url: url, isPresented: $showSheet, onShared: onShared)
                 .frame(width: 0, height: 0)
         }
     }
@@ -184,6 +185,7 @@ private struct ShareButton: View {
 private struct SharePresenter: UIViewControllerRepresentable {
     let url: URL
     @Binding var isPresented: Bool
+    var onShared: (() -> Void)? = nil
 
     func makeUIViewController(context: Context) -> UIViewController {
         UIViewController()
@@ -207,8 +209,11 @@ private struct SharePresenter: UIViewControllerRepresentable {
             popover.permittedArrowDirections = []
         }
 
-        vc.completionWithItemsHandler = { _, _, _, _ in
+        vc.completionWithItemsHandler = { _, completed, _, _ in
             isPresented = false
+            if completed {
+                onShared?()
+            }
         }
 
         uiViewController.present(vc, animated: true)

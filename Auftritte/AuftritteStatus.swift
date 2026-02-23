@@ -8,6 +8,40 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Pendenz
+
+enum Pendenz: String, Codable, CaseIterable, Identifiable {
+    case speaker = "Speaker"
+    case client = "Auftraggeber"
+    case none = "Keine"
+
+    var id: String { rawValue }
+}
+
+// MARK: - Keynote Section
+
+enum KeynoteSection: Int, CaseIterable, Identifiable {
+    case datumInAbklaerung = 0
+    case pendenzSpeaker = 1
+    case pendenzClient = 2
+    case auftrittsbereit = 3
+    case erledigt = 4
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .datumInAbklaerung: return "Datum in Abklärung"
+        case .pendenzSpeaker: return "Pendenz beim Speaker"
+        case .pendenzClient: return "Pendenz beim Auftraggeber"
+        case .auftrittsbereit: return "Auftrittsbereit"
+        case .erledigt: return "Erledigt"
+        }
+    }
+}
+
+// MARK: - Keynote Status
+
 enum KeynoteStatus: String, Codable, CaseIterable, Identifiable {
     case requested = "Angefragt"
     case dateConfirmedFeeOffered = "Termin bestätigt, Honorar offeriert"

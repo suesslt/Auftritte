@@ -28,7 +28,9 @@ actor CSVExporter {
         "language",
         "contactFullName",
         "contactEmail",
-        "contactPhone"
+        "contactPhone",
+        "inAbklaerung",
+        "pendenzRaw"
     ]
 
     private let isoFormatter: ISO8601DateFormatter = {
@@ -89,7 +91,9 @@ actor CSVExporter {
             keynote.language,
             keynote.contactFullName,
             keynote.contactEmail,
-            keynote.contactPhone
+            keynote.contactPhone,
+            String(keynote.inAbklaerung),
+            keynote.pendenzRaw
         ]
         return fields.map { csvField($0) }.joined(separator: ",")
     }

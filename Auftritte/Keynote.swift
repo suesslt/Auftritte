@@ -28,6 +28,8 @@ final class Keynote {
     var calendarEventID: String? // EventKit Event Identifier
     var notes: String = ""
     var language: String = "" // Sprache des Auftritts
+    var inAbklaerung: Bool = false
+    var pendenzRaw: String = Pendenz.speaker.rawValue
     
     // Computed properties für Kontakt-Darstellung (analog zu KeynoteContact)
     var contactDisplayName: String {
@@ -48,6 +50,32 @@ final class Keynote {
         }
     }
     
+    // Computed property für Pendenz
+    var pendenz: Pendenz {
+        get {
+            Pendenz(rawValue: pendenzRaw) ?? .speaker
+        }
+        set {
+            pendenzRaw = newValue.rawValue
+        }
+    }
+
+    // Computed property für Section-Zuordnung
+    var section: KeynoteSection {
+        let erledigtStatuses: Set<KeynoteStatus> = [.closed, .cancelled, .paid]
+        if erledigtStatuses.contains(status) {
+            return .erledigt
+        }
+        if inAbklaerung {
+            return .datumInAbklaerung
+        }
+        switch pendenz {
+        case .speaker: return .pendenzSpeaker
+        case .client: return .pendenzClient
+        case .none: return .auftrittsbereit
+        }
+    }
+
     // Computed property für Honorar mit Decimal-Kompatibilität
     var agreedFee: Decimal {
         get {
@@ -79,7 +107,9 @@ final class Keynote {
         requestDate: Date = Date(),
         calendarEventID: String? = nil,
         notes: String = "",
-        language: String = ""
+        language: String = "",
+        inAbklaerung: Bool = false,
+        pendenz: Pendenz = .speaker
     ) {
         self.eventName = eventName
         self.eventDate = eventDate
@@ -91,12 +121,12 @@ final class Keynote {
         self.contactEmail = contactEmail
         self.contactPhone = contactPhone
         self.contactLocalID = contactLocalID
-        
+
         var result = agreedFee * Decimal(100)
         var rounded = Decimal()
         NSDecimalRound(&rounded, &result, 0, .plain)
         self.agreedFeeInCents = Int64(truncating: rounded as NSDecimalNumber)
-        
+
         self.targetAudience = targetAudience
         self.location = location
         self.statusRaw = status.rawValue
@@ -104,5 +134,7 @@ final class Keynote {
         self.calendarEventID = calendarEventID
         self.notes = notes
         self.language = language
+        self.inAbklaerung = inAbklaerung
+        self.pendenzRaw = pendenz.rawValue
     }
 }

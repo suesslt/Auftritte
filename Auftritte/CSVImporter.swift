@@ -56,7 +56,8 @@ actor CSVImporter {
         "eventName", "eventDate", "keynoteTitle", "keynoteTheme", "duration",
         "clientOrganization", "agreedFeeInCents", "targetAudience", "location",
         "statusRaw", "requestDate", "notes", "language",
-        "contactFullName", "contactEmail", "contactPhone"
+        "contactFullName", "contactEmail", "contactPhone",
+        "inAbklaerung", "pendenzRaw"
     ]
     
     // ISO 8601 Date Formatter (wie im Export verwendet)
@@ -138,7 +139,12 @@ actor CSVImporter {
         
         // Status – Fallback auf .requested wenn unbekannt
         let status = KeynoteStatus(rawValue: statusRaw) ?? .requested
-        
+
+        // Neue Felder
+        let inAbklaerung = (fields["inAbklaerung"] ?? "false").lowercased() == "true"
+        let pendenzRawValue = fields["pendenzRaw"] ?? Pendenz.speaker.rawValue
+        let pendenz = Pendenz(rawValue: pendenzRawValue) ?? .speaker
+
         // Keynote erstellen
         let keynote = Keynote(
             eventName: rawEventName,
@@ -155,7 +161,9 @@ actor CSVImporter {
             status: status,
             requestDate: requestDate,
             notes: notes,
-            language: language
+            language: language,
+            inAbklaerung: inAbklaerung,
+            pendenz: pendenz
         )
         
         // Honorar direkt in Cents setzen (kein Rundungsfehler)

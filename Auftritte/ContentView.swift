@@ -38,70 +38,85 @@ struct ContentView: View {
                 keynote.keynoteTitle.localizedCaseInsensitiveContains(searchText) ||
                 keynote.keynoteTheme.localizedCaseInsensitiveContains(searchText) ||
                 keynote.clientOrganization.localizedCaseInsensitiveContains(searchText) ||
-                keynote.location.localizedCaseInsensitiveContains(searchText)
+                keynote.location.localizedCaseInsensitiveContains(searchText) ||
+                keynote.contactFullName.localizedCaseInsensitiveContains(searchText) ||
+                keynote.contactEmail.localizedCaseInsensitiveContains(searchText) ||
+                keynote.contactPhone.localizedCaseInsensitiveContains(searchText)
             }
         }
         
         return filtered
     }
 
+    private var groupedKeynotes: [(section: KeynoteSection, keynotes: [Keynote])] {
+        let grouped = Dictionary(grouping: filteredKeynotes) { $0.section }
+        return KeynoteSection.allCases.compactMap { section in
+            guard let items = grouped[section], !items.isEmpty else { return nil }
+            return (section: section, keynotes: items.sorted { $0.eventDate < $1.eventDate })
+        }
+    }
+
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                ForEach(filteredKeynotes) { keynote in
-                    NavigationLink(value: keynote.id) {
-                        KeynoteRowView(keynote: keynote)
-                    }
-                    .listRowBackground(
-                        selection == keynote.id ? Color.gray.opacity(0.3) : Color.clear
-                    )
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
-                            deleteKeynote(keynote)
-                        } label: {
-                            Label("Löschen", systemImage: "trash")
-                        }
-                    }
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        Menu {
-                            ForEach(KeynoteStatus.allCases) { status in
-                                Button {
-                                    updateStatus(for: keynote, to: status)
+                ForEach(groupedKeynotes, id: \.section) { group in
+                    Section(group.section.title) {
+                        ForEach(group.keynotes) { keynote in
+                            NavigationLink(value: keynote.id) {
+                                KeynoteRowView(keynote: keynote)
+                            }
+                            .listRowBackground(
+                                selection == keynote.id ? Color.gray.opacity(0.3) : Color.clear
+                            )
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    deleteKeynote(keynote)
                                 } label: {
-                                    HStack {
-                                        Circle()
-                                            .fill(status.color)
-                                            .frame(width: 12, height: 12)
-                                        Text(status.rawValue)
-                                        if keynote.status == status {
-                                            Spacer()
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
+                                    Label("Löschen", systemImage: "trash")
                                 }
                             }
-                        } label: {
-                            Label("Status", systemImage: "circle.fill")
-                        }
-                        .tint(.blue)
-                    }
-                    .contextMenu {
-                        Button {
-                            selection = keynote.id
-                        } label: {
-                            Label("Bearbeiten", systemImage: "pencil")
-                        }
-                        
-                        Button(role: .destructive) {
-                            deleteKeynote(keynote)
-                        } label: {
-                            Label("Löschen", systemImage: "trash")
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Menu {
+                                    ForEach(KeynoteStatus.allCases) { status in
+                                        Button {
+                                            updateStatus(for: keynote, to: status)
+                                        } label: {
+                                            HStack {
+                                                Circle()
+                                                    .fill(status.color)
+                                                    .frame(width: 12, height: 12)
+                                                Text(status.rawValue)
+                                                if keynote.status == status {
+                                                    Spacer()
+                                                    Image(systemName: "checkmark")
+                                                }
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    Label("Status", systemImage: "circle.fill")
+                                }
+                                .tint(.blue)
+                            }
+                            .contextMenu {
+                                Button {
+                                    selection = keynote.id
+                                } label: {
+                                    Label("Bearbeiten", systemImage: "pencil")
+                                }
+
+                                Button(role: .destructive) {
+                                    deleteKeynote(keynote)
+                                } label: {
+                                    Label("Löschen", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
             }
             .navigationTitle("Auftritte")
-            .searchable(text: $searchText, prompt: "Suchen...")
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Suchen...")
             .toolbar {
                 ToolbarItem(placement: .automatic) {
                     Menu {

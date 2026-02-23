@@ -78,7 +78,9 @@ struct KeynoteDetailView: View {
             TextField("Name des Anlasses", text: $keynote.eventName)
             
             DatePicker("Datum und Zeit", selection: $keynote.eventDate)
-            
+
+            Toggle("In Abklärung", isOn: $keynote.inAbklaerung)
+
             TextField("Titel der Keynote", text: $keynote.keynoteTitle)
             
             TextField("Thema", text: $keynote.keynoteTheme)
@@ -161,6 +163,13 @@ struct KeynoteDetailView: View {
                 Text(keynote.status.rawValue)
                 Spacer()
             }
+
+            Picker("Pendenz", selection: $keynote.pendenz) {
+                ForEach(Pendenz.allCases) { p in
+                    Text(p.rawValue).tag(p)
+                }
+            }
+            .pickerStyle(.segmented)
             
             if !keynote.status.nextStatus.isEmpty {
                 Button("Status ändern") {
