@@ -32,6 +32,7 @@ struct KeynoteDetailView: View {
             basicInfoSection
             detailsSection
             contactSection
+            pendenzSection
             statusSection
             availabilitySection
             notesSection
@@ -78,10 +79,12 @@ struct KeynoteDetailView: View {
             TextField("Name des Anlasses", text: $keynote.eventName)
             
             HStack {
-                Toggle("In Abklärung", isOn: $keynote.inAbklaerung)
-                    .fixedSize()
+                Text("Datum Anlass")
+                Spacer()
                 DatePicker("", selection: $keynote.eventDate)
                     .labelsHidden()
+                Toggle("In Abklärung", isOn: $keynote.inAbklaerung)
+                    .fixedSize()
             }
 
             TextField("Titel der Keynote", text: $keynote.keynoteTitle)
@@ -157,6 +160,17 @@ struct KeynoteDetailView: View {
         }
     }
     
+    private var pendenzSection: some View {
+        Section("Pendenz") {
+            Picker("Pendenz", selection: $keynote.pendenz) {
+                ForEach(Pendenz.allCases) { p in
+                    Text(p.rawValue).tag(p)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+    
     private var statusSection: some View {
         Section("Status") {
             HStack {
@@ -166,13 +180,6 @@ struct KeynoteDetailView: View {
                 Text(keynote.status.rawValue)
                 Spacer()
             }
-
-            Picker("Pendenz", selection: $keynote.pendenz) {
-                ForEach(Pendenz.allCases) { p in
-                    Text(p.rawValue).tag(p)
-                }
-            }
-            .pickerStyle(.segmented)
             
             if !keynote.status.nextStatus.isEmpty {
                 Button("Status ändern") {
