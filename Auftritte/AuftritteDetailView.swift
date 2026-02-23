@@ -77,9 +77,12 @@ struct KeynoteDetailView: View {
         Section("Grundinformationen") {
             TextField("Name des Anlasses", text: $keynote.eventName)
             
-            DatePicker("Datum und Zeit", selection: $keynote.eventDate)
-
-            Toggle("In Abklärung", isOn: $keynote.inAbklaerung)
+            HStack {
+                Toggle("In Abklärung", isOn: $keynote.inAbklaerung)
+                    .fixedSize()
+                DatePicker("", selection: $keynote.eventDate)
+                    .labelsHidden()
+            }
 
             TextField("Titel der Keynote", text: $keynote.keynoteTitle)
             

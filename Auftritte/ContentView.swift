@@ -58,63 +58,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $selection) {
-                ForEach(groupedKeynotes, id: \.section) { group in
-                    Section(group.section.title) {
-                        ForEach(group.keynotes) { keynote in
-                            NavigationLink(value: keynote.id) {
-                                KeynoteRowView(keynote: keynote)
-                            }
-                            .listRowBackground(
-                                selection == keynote.id ? Color.gray.opacity(0.3) : Color.clear
-                            )
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    deleteKeynote(keynote)
-                                } label: {
-                                    Label("Löschen", systemImage: "trash")
-                                }
-                            }
-                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                Menu {
-                                    ForEach(KeynoteStatus.allCases) { status in
-                                        Button {
-                                            updateStatus(for: keynote, to: status)
-                                        } label: {
-                                            HStack {
-                                                Circle()
-                                                    .fill(status.color)
-                                                    .frame(width: 12, height: 12)
-                                                Text(status.rawValue)
-                                                if keynote.status == status {
-                                                    Spacer()
-                                                    Image(systemName: "checkmark")
-                                                }
-                                            }
-                                        }
-                                    }
-                                } label: {
-                                    Label("Status", systemImage: "circle.fill")
-                                }
-                                .tint(.blue)
-                            }
-                            .contextMenu {
-                                Button {
-                                    selection = keynote.id
-                                } label: {
-                                    Label("Bearbeiten", systemImage: "pencil")
-                                }
-
-                                Button(role: .destructive) {
-                                    deleteKeynote(keynote)
-                                } label: {
-                                    Label("Löschen", systemImage: "trash")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            keynoteList
             .navigationTitle("Auftritte")
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Suchen...")
             .toolbar {
@@ -239,6 +183,74 @@ struct ContentView: View {
         }
         .errorAlert(errorHandler: errorHandler)
     }
+
+    // MARK: - Extracted Views
+
+    private var keynoteList: some View {
+        List(selection: $selection) {
+            ForEach(groupedKeynotes, id: \.section) { group in
+                Section(group.section.title) {
+                    ForEach(group.keynotes) { keynote in
+                        keynoteRow(for: keynote)
+                    }
+                }
+            }
+        }
+    }
+
+    private func keynoteRow(for keynote: Keynote) -> some View {
+        NavigationLink(value: keynote.id) {
+            KeynoteRowView(keynote: keynote)
+        }
+        .listRowBackground(
+            selection == keynote.id ? Color.gray.opacity(0.3) : Color.clear
+        )
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                deleteKeynote(keynote)
+            } label: {
+                Label("Löschen", systemImage: "trash")
+            }
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            Menu {
+                ForEach(KeynoteStatus.allCases) { status in
+                    Button {
+                        updateStatus(for: keynote, to: status)
+                    } label: {
+                        HStack {
+                            Circle()
+                                .fill(status.color)
+                                .frame(width: 12, height: 12)
+                            Text(status.rawValue)
+                            if keynote.status == status {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label("Status", systemImage: "circle.fill")
+            }
+            .tint(.blue)
+        }
+        .contextMenu {
+            Button {
+                selection = keynote.id
+            } label: {
+                Label("Bearbeiten", systemImage: "pencil")
+            }
+
+            Button(role: .destructive) {
+                deleteKeynote(keynote)
+            } label: {
+                Label("Löschen", systemImage: "trash")
+            }
+        }
+    }
+
+    // MARK: - Actions
 
     private func createNewKeynote() {
         let keynote = Keynote()
