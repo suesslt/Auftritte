@@ -46,7 +46,7 @@ enum CSVParseError: LocalizedError {
 
 // MARK: - CSV Importer Service
 
-actor CSVImporter {
+actor KeynoteCSVImporter {
     
     // Pflichtkolonnen – ohne diese kann eine Zeile nicht importiert werden
     private static let requiredColumns = ["eventName", "eventDate"]

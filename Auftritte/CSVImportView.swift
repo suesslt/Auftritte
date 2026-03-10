@@ -27,7 +27,7 @@ struct CSVImportView: View {
     // Datei-Picker
     @State private var showingFilePicker = false
     
-    private let importer = CSVImporter()
+    private let importer = KeynoteCSVImporter()
     
     var body: some View {
         NavigationStack {

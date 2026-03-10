@@ -18,7 +18,7 @@ struct CSVExportView: View {
 
     @State private var phase: ExportPhase = .building
 
-    private let exporter = CSVExporter()
+    private let exporter = KeynoteCSVExporter()
 
     var body: some View {
         NavigationStack {

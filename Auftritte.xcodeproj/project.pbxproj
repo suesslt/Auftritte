@@ -23,6 +23,12 @@
 		};
 /* End PBXContainerItemProxy section */
 
+
+/* Begin PBXBuildFile section */
+		B5AA00042F45670000000004 /* Score in Frameworks */ = {isa = PBXBuildFile; productRef = B5AA00022F45670000000002 /* Score */; };
+		B5AA00052F45670000000005 /* ScoreUI in Frameworks */ = {isa = PBXBuildFile; productRef = B5AA00032F45670000000003 /* ScoreUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		B56AD6932F45666400B38CBF /* Auftritte.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Auftritte.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B56AD6A42F45666500B38CBF /* AuftritteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AuftritteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -65,6 +71,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B5AA00042F45670000000004 /* Score in Frameworks */,
+				B5AA00052F45670000000005 /* ScoreUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,6 +133,8 @@
 			);
 			name = Auftritte;
 			packageProductDependencies = (
+				B5AA00022F45670000000002 /* Score */,
+				B5AA00032F45670000000003 /* ScoreUI */,
 			);
 			productName = Auftritte;
 			productReference = B56AD6932F45666400B38CBF /* Auftritte.app */;
@@ -208,6 +218,9 @@
 			);
 			mainGroup = B56AD68A2F45666400B38CBF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B5AA00012F45670000000001 /* XCLocalSwiftPackageReference "../score" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B56AD6942F45666400B38CBF /* Products */;
 			projectDirPath = "";
@@ -640,6 +653,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin PBXSwiftPackageProductDependency section */
+		B5AA00022F45670000000002 /* Score */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Score;
+		};
+		B5AA00032F45670000000003 /* ScoreUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ScoreUI;
+		};
+/* End PBXSwiftPackageProductDependency section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		B5AA00012F45670000000001 /* XCLocalSwiftPackageReference "../score" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../score;
+		};
+/* End XCLocalSwiftPackageReference section */
 	};
 	rootObject = B56AD68B2F45666400B38CBF /* Project object */;
 }

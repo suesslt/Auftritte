@@ -9,9 +9,9 @@ import Foundation
 
 // MARK: - CSV Exporter Service
 
-actor CSVExporter {
+actor KeynoteCSVExporter {
 
-    // Exakt dieselbe Kolonnen-Reihenfolge wie in CSVImporter.knownColumns
+    // Exakt dieselbe Kolonnen-Reihenfolge wie in KeynoteCSVImporter.knownColumns
     static let headers = [
         "eventName",
         "eventDate",
