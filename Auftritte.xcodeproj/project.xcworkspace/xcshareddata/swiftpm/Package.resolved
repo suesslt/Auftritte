@@ -1,0 +1,15 @@
+{
+  "originHash" : "446fd9c18cb25956fd96f4bff1b4bd03443518c90645a9cc8a92b5f5e889fa72",
+  "pins" : [
+    {
+      "identity" : "score",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/suesslt/score.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "16be716ec3429222d96e6212d383f776822b7cea"
+      }
+    }
+  ],
+  "version" : 3
+}
