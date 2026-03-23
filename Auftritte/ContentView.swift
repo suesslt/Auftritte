@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import ScoreUI
+import QuickLook
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -16,9 +17,10 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var newKeynote: Keynote?
     @State private var selection: Keynote.ID?
+    @State private var selectedCategory: SidebarCategory? = .alleAuftritte
     @State private var statusFilter: KeynoteStatus?
     @State private var showingStats = false
-    @State private var showingPDFExport = false
+    @State private var pdfURL: URL?
     @State private var showingCSVImport = false
     @State private var showingCSVExport = false
     @StateObject private var calendarService = CalendarService()
@@ -26,12 +28,28 @@ struct ContentView: View {
 
     var filteredKeynotes: [Keynote] {
         var filtered = keynotes
-        
+
+        // Kategorie-Filter
+        if let category = selectedCategory {
+            switch category {
+            case .alleAuftritte:
+                filtered = filtered.filter { !$0.inAbklaerung }
+            case .pendenzSpeaker:
+                filtered = filtered.filter { $0.section == .pendenzSpeaker }
+            case .datumUngeklaert:
+                filtered = filtered.filter { $0.inAbklaerung }
+            case .vereinbarteAuftritte:
+                filtered = filtered.filter { !$0.inAbklaerung && $0.eventDate >= Date() && $0.status != .cancelled }
+            case .durchgefuehrt:
+                filtered = filtered.filter { $0.section == .erledigt }
+            }
+        }
+
         // Status-Filter
         if let status = statusFilter {
             filtered = filtered.filter { $0.status == status }
         }
-        
+
         // Suchtext-Filter
         if !searchText.isEmpty {
             filtered = filtered.filter { keynote in
@@ -45,7 +63,7 @@ struct ContentView: View {
                 keynote.contactPhone.localizedCaseInsensitiveContains(searchText)
             }
         }
-        
+
         return filtered
     }
 
@@ -59,8 +77,51 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            keynoteList
+            // Spalte 1 — Sidebar: Kategorie-Navigation
+            List(selection: $selectedCategory) {
+                ForEach(SidebarCategory.allCases) { category in
+                    Label(category.rawValue, systemImage: category.icon)
+                        .font(.title3)
+                        .tag(category)
+                }
+            }
             .navigationTitle("Auftritte")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: createNewKeynote) {
+                        Label("Neuer Auftritt", systemImage: "plus")
+                    }
+                }
+
+                ToolbarItem(placement: .automatic) {
+                    Menu {
+                        Button(action: { showingStats = true }) {
+                            Label("Statistiken", systemImage: "chart.bar.fill")
+                        }
+
+                        Button(action: { exportPDF() }) {
+                            Label("PDF exportieren", systemImage: "doc.fill")
+                        }
+
+                        Divider()
+
+                        Button(action: { showingCSVImport = true }) {
+                            Label("CSV importieren", systemImage: "square.and.arrow.down.on.square")
+                        }
+
+                        Button(action: { showingCSVExport = true }) {
+                            Label("CSV exportieren", systemImage: "square.and.arrow.up.on.square")
+                        }
+                    } label: {
+                        Label("Mehr", systemImage: "ellipsis.circle")
+                    }
+                }
+            }
+        } content: {
+            // Spalte 2 — Gefilterte Auftritt-Liste
+            keynoteList
+            .navigationTitle(selectedCategory?.rawValue ?? "Auftritte")
+            .navigationSplitViewColumnWidth(min: 300, ideal: 400, max: 500)
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Suchen...")
             .toolbar {
                 ToolbarItem(placement: .automatic) {
@@ -89,40 +150,6 @@ struct ContentView: View {
                         Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                     }
                 }
-
-                ToolbarItem(placement: .automatic) {
-                    Menu {
-                        Button(action: { showingStats = true }) {
-                            Label("Statistiken", systemImage: "chart.bar.fill")
-                        }
-
-                        Button(action: { exportPDF() }) {
-                            Label("PDF exportieren", systemImage: "doc.fill")
-                        }
-                        
-                        Divider()
-                        
-                        Button(action: { showingCSVImport = true }) {
-                            Label("CSV importieren", systemImage: "square.and.arrow.down.on.square")
-                        }
-
-                        Button(action: { showingCSVExport = true }) {
-                            Label("CSV exportieren", systemImage: "square.and.arrow.up.on.square")
-                        }
-                    } label: {
-                        Label("Mehr", systemImage: "ellipsis.circle")
-                    }
-                }
-
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: createNewKeynote) {
-                        Label("Neuer Auftritt", systemImage: "plus")
-                    }
-                }
-            }
-            .navigationDestination(for: Keynote.ID.self) { _ in
-                // Wird durch detail: Closure abgedeckt
-                EmptyView()
             }
             .sheet(isPresented: $showingStats) {
                 NavigationStack {
@@ -136,9 +163,7 @@ struct ContentView: View {
                         }
                 }
             }
-            .sheet(isPresented: $showingPDFExport) {
-                PDFExportView(keynotes: keynotes)
-            }
+            .quickLookPreview($pdfURL)
             .sheet(isPresented: $showingCSVImport) {
                 CSVImportView()
             }
@@ -189,23 +214,34 @@ struct ContentView: View {
 
     private var keynoteList: some View {
         List(selection: $selection) {
-            ForEach(groupedKeynotes, id: \.section) { group in
-                Section(group.section.title) {
-                    ForEach(group.keynotes) { keynote in
-                        keynoteRow(for: keynote)
+            if selectedCategory == .alleAuftritte || selectedCategory == .vereinbarteAuftritte {
+                // Keine Gruppierung - nur nach Datum sortiert
+                ForEach(filteredKeynotes) { keynote in
+                    keynoteRow(for: keynote)
+                        .tag(keynote.id)
+                }
+            } else {
+                // Gruppierung nach Section
+                ForEach(groupedKeynotes, id: \.section) { group in
+                    Section(group.section.title) {
+                        ForEach(group.keynotes) { keynote in
+                            keynoteRow(for: keynote)
+                                .tag(keynote.id)
+                        }
                     }
                 }
             }
         }
+        .listStyle(.sidebar)
     }
 
     private func keynoteRow(for keynote: Keynote) -> some View {
-        NavigationLink(value: keynote.id) {
+        Button {
+            selection = keynote.id
+        } label: {
             KeynoteRowView(keynote: keynote)
         }
-        .listRowBackground(
-            selection == keynote.id ? Color.gray.opacity(0.3) : Color.clear
-        )
+        .buttonStyle(.plain)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
                 deleteKeynote(keynote)
@@ -249,6 +285,9 @@ struct ContentView: View {
                 Label("Löschen", systemImage: "trash")
             }
         }
+        .listRowBackground(
+            selection == keynote.id ? Color.accentColor.opacity(0.15) : Color.clear
+        )
     }
 
     // MARK: - Actions
@@ -283,7 +322,13 @@ struct ContentView: View {
     }
     
     private func exportPDF() {
-        showingPDFExport = true
+        let pdfData = KeynotePDFGenerator.generatePDF(
+            keynotes: keynotes.filter { !$0.inAbklaerung },
+            title: "Auftrittsübersicht"
+        )
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("Auftrittsübersicht.pdf")
+        try? pdfData.write(to: tempURL)
+        pdfURL = tempURL
     }
 }
 

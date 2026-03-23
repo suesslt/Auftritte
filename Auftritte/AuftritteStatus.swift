@@ -40,6 +40,28 @@ enum KeynoteSection: Int, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Sidebar Category
+
+enum SidebarCategory: String, CaseIterable, Identifiable {
+    case alleAuftritte = "Alle Auftritte"
+    case pendenzSpeaker = "Pendenzen Speaker"
+    case datumUngeklaert = "Datum noch nicht geklärt"
+    case vereinbarteAuftritte = "Vereinbarte Auftritte"
+    case durchgefuehrt = "Durchgeführt"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .alleAuftritte: return "rectangle.stack.fill"
+        case .pendenzSpeaker: return "person.badge.clock"
+        case .datumUngeklaert: return "calendar.badge.exclamationmark"
+        case .vereinbarteAuftritte: return "calendar.badge.checkmark"
+        case .durchgefuehrt: return "checkmark.circle.fill"
+        }
+    }
+}
+
 // MARK: - Keynote Status
 
 enum KeynoteStatus: String, Codable, CaseIterable, Identifiable {

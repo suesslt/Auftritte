@@ -51,7 +51,8 @@ extension Keynote {
             location: "Basel, Switzerland",
             status: .paid,
             requestDate: Date().addingTimeInterval(-60 * 60 * 24 * 90),
-            language: "Deutsch"
+            language: "Deutsch",
+            attendeeCount: 250
         ),
         Keynote(
             eventName: "Digital Marketing Forum",
@@ -94,7 +95,8 @@ extension Keynote {
             location: "Luzern, Switzerland",
             status: .closed,
             requestDate: Date().addingTimeInterval(-60 * 60 * 24 * 120),
-            language: "Deutsch"
+            language: "Deutsch",
+            attendeeCount: 180
         ),
         Keynote(
             eventName: "Sustainability Summit",
@@ -122,7 +124,8 @@ extension Keynote {
             location: "Zürich, Switzerland",
             status: .completedInvoiced,
             requestDate: Date().addingTimeInterval(-60 * 60 * 24 * 75),
-            language: "Englisch"
+            language: "Englisch",
+            attendeeCount: 400
         )
     ]
     

@@ -30,6 +30,7 @@ final class Keynote {
     var language: String = "" // Sprache des Auftritts
     var inAbklaerung: Bool = false
     var pendenzRaw: String = Pendenz.speaker.rawValue
+    var attendeeCount: Int?
     
     // Computed properties für Kontakt-Darstellung (analog zu KeynoteContact)
     var contactDisplayName: String {
@@ -66,6 +67,12 @@ final class Keynote {
         if erledigtStatuses.contains(status) {
             return .erledigt
         }
+        
+        // Wenn das Datum bekannt ist (nicht in Abklärung) und in der Vergangenheit liegt
+        if !inAbklaerung && eventDate < Date() {
+            return .erledigt
+        }
+        
         if inAbklaerung {
             return .datumInAbklaerung
         }
@@ -109,7 +116,8 @@ final class Keynote {
         notes: String = "",
         language: String = "",
         inAbklaerung: Bool = false,
-        pendenz: Pendenz = .speaker
+        pendenz: Pendenz = .speaker,
+        attendeeCount: Int? = nil
     ) {
         self.eventName = eventName
         self.eventDate = eventDate
@@ -136,5 +144,6 @@ final class Keynote {
         self.language = language
         self.inAbklaerung = inAbklaerung
         self.pendenzRaw = pendenz.rawValue
+        self.attendeeCount = attendeeCount
     }
 }

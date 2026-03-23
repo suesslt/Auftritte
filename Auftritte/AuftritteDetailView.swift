@@ -120,7 +120,16 @@ struct KeynoteDetailView: View {
             }
             
             TextField("Zielpublikum", text: $keynote.targetAudience)
-            
+
+            HStack {
+                Text("Anzahl Zuhörer")
+                Spacer()
+                TextField("Anzahl", value: $keynote.attendeeCount, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 80)
+            }
+
             TextField("Ort", text: $keynote.location)
             
             DatePicker("Anfragedatum", selection: $keynote.requestDate, displayedComponents: .date)

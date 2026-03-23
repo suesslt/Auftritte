@@ -105,12 +105,16 @@ class KeynotePDFGenerator {
     }
     
     private static func drawText(_ text: String, in rect: CGRect, pageRect: CGRect, attributes: [NSAttributedString.Key: Any], context: CGContext) {
-        let flipped = flip(rect, in: pageRect)
         let nsString = text as NSString
 
+        context.saveGState()
+        // Koordinatensystem von PDF (Ursprung unten-links) auf UIKit (Ursprung oben-links) umwandeln
+        context.translateBy(x: 0, y: pageRect.height)
+        context.scaleBy(x: 1, y: -1)
         UIGraphicsPushContext(context)
-        nsString.draw(in: flipped, withAttributes: attributes)
+        nsString.draw(in: rect, withAttributes: attributes)
         UIGraphicsPopContext()
+        context.restoreGState()
     }
     
     private static func drawTitle(_ title: String, at yPosition: CGFloat, pageRect: CGRect, pageWidth: CGFloat, margin: CGFloat, context: CGContext) -> CGFloat {
@@ -269,7 +273,13 @@ class KeynotePDFGenerator {
             lines.append(TextLine(text: "Zielpublikum: \(keynote.targetAudience)", y: currentY, attributes: regularAttributes, height: 16))
             currentY += 16
         }
-        
+
+        // Anzahl Zuhörer
+        if let count = keynote.attendeeCount {
+            lines.append(TextLine(text: "Anzahl Zuhörer: \(count)", y: currentY, attributes: regularAttributes, height: 16))
+            currentY += 16
+        }
+
         // Sprache
         if !keynote.language.isEmpty {
             lines.append(TextLine(text: "Sprache: \(keynote.language)", y: currentY, attributes: regularAttributes, height: 16))

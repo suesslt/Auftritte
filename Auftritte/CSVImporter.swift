@@ -57,7 +57,8 @@ actor KeynoteCSVImporter {
         "clientOrganization", "agreedFeeInCents", "targetAudience", "location",
         "statusRaw", "requestDate", "notes", "language",
         "contactFullName", "contactEmail", "contactPhone",
-        "inAbklaerung", "pendenzRaw"
+        "inAbklaerung", "pendenzRaw",
+        "attendeeCount"
     ]
     
     // ISO 8601 Date Formatter (wie im Export verwendet)
@@ -168,6 +169,9 @@ actor KeynoteCSVImporter {
         
         // Honorar direkt in Cents setzen (kein Rundungsfehler)
         keynote.agreedFeeInCents = agreedFeeInCents
+
+        // Anzahl Zuhörer (optional)
+        keynote.attendeeCount = Int(fields["attendeeCount"] ?? "")
         
         return CSVImportRow(
             lineNumber: lineNumber,
