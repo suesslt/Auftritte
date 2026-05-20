@@ -31,6 +31,8 @@ actor KeynoteCSVExporter {
         "contactPhone",
         "inAbklaerung",
         "pendenzRaw",
+        "pendenzNote",
+        "pendenzErledigt",
         "attendeeCount"
     ]
 
@@ -90,11 +92,13 @@ actor KeynoteCSVExporter {
             isoFormatter.string(from: keynote.requestDate),
             keynote.notes,
             keynote.language,
-            keynote.contactFullName,
+            Self.combinedContactName(keynote),
             keynote.contactEmail,
             keynote.contactPhone,
             String(keynote.inAbklaerung),
             keynote.pendenzRaw,
+            keynote.pendenzNote,
+            String(keynote.pendenzErledigt),
             keynote.attendeeCount.map(String.init) ?? ""
         ]
         return fields.map { csvField($0) }.joined(separator: ",")
@@ -118,6 +122,14 @@ actor KeynoteCSVExporter {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HHmm"
         return formatter.string(from: Date())
+    }
+
+    /// Kombiniert Vorname und Nachname zu "Vorname Name". Fällt auf Legacy `contactFullName` zurück.
+    nonisolated static func combinedContactName(_ keynote: Keynote) -> String {
+        let first = keynote.contactFirstName.trimmingCharacters(in: .whitespaces)
+        let last  = keynote.contactLastName.trimmingCharacters(in: .whitespaces)
+        let combined = [first, last].filter { !$0.isEmpty }.joined(separator: " ")
+        return combined.isEmpty ? keynote.contactFullName : combined
     }
 }
 

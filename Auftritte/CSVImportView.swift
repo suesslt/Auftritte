@@ -423,9 +423,9 @@ private struct ImportRowView: View {
                             Text(keynote.clientOrganization)
                         }
                         
-                        if let keynote = row.keynote, !keynote.contactFullName.isEmpty {
+                        if let keynote = row.keynote, keynote.contactHasData {
                             Text("·")
-                            Text(keynote.contactFullName)
+                            Text(keynote.contactDisplayName)
                         }
                     }
                     .font(.caption)

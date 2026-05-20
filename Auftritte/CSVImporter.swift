@@ -57,7 +57,7 @@ actor KeynoteCSVImporter {
         "clientOrganization", "agreedFeeInCents", "targetAudience", "location",
         "statusRaw", "requestDate", "notes", "language",
         "contactFullName", "contactEmail", "contactPhone",
-        "inAbklaerung", "pendenzRaw",
+        "inAbklaerung", "pendenzRaw", "pendenzNote", "pendenzErledigt",
         "attendeeCount"
     ]
     
@@ -145,8 +145,11 @@ actor KeynoteCSVImporter {
         let inAbklaerung = (fields["inAbklaerung"] ?? "false").lowercased() == "true"
         let pendenzRawValue = fields["pendenzRaw"] ?? Pendenz.speaker.rawValue
         let pendenz = Pendenz(rawValue: pendenzRawValue) ?? .speaker
+        let pendenzNote = fields["pendenzNote"] ?? ""
+        let pendenzErledigt = (fields["pendenzErledigt"] ?? "false").lowercased() == "true"
 
         // Keynote erstellen
+        let (importedFirstName, importedLastName) = Self.splitContactName(fields["contactFullName"] ?? "")
         let keynote = Keynote(
             eventName: rawEventName,
             eventDate: eventDate,
@@ -154,7 +157,9 @@ actor KeynoteCSVImporter {
             keynoteTheme: keynoteTheme,
             duration: duration,
             clientOrganization: clientOrganization,
-            contactFullName: fields["contactFullName"] ?? "",
+            contactFirstName: importedFirstName,
+            contactLastName: importedLastName,
+            contactFullName: "",
             contactEmail: fields["contactEmail"] ?? "",
             contactPhone: fields["contactPhone"] ?? "",
             targetAudience: targetAudience,
@@ -164,7 +169,9 @@ actor KeynoteCSVImporter {
             notes: notes,
             language: language,
             inAbklaerung: inAbklaerung,
-            pendenz: pendenz
+            pendenz: pendenz,
+            pendenzNote: pendenzNote,
+            pendenzErledigt: pendenzErledigt
         )
         
         // Honorar direkt in Cents setzen (kein Rundungsfehler)
@@ -296,5 +303,19 @@ actor KeynoteCSVImporter {
     private func parseDate(_ string: String?) -> Date? {
         guard let s = string, !s.isEmpty else { return nil }
         return isoFormatter.date(from: s)
+    }
+
+    // MARK: - Contact Name Splitting
+
+    /// Splittet einen vollständigen Namen heuristisch in (Vorname, Nachname).
+    /// Erstes Wort = Vorname, Rest = Nachname. Bei nur einem Wort gilt es als Vorname.
+    nonisolated static func splitContactName(_ fullName: String) -> (firstName: String, lastName: String) {
+        let trimmed = fullName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return ("", "") }
+        let parts = trimmed.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+        if parts.count == 2 {
+            return (String(parts[0]), String(parts[1]))
+        }
+        return (trimmed, "")
     }
 }

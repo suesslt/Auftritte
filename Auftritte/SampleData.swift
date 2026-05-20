@@ -122,7 +122,7 @@ extension Keynote {
             agreedFee: 8000,
             targetAudience: "Bank-Executives und Fintech-Experten",
             location: "Zürich, Switzerland",
-            status: .completedInvoiced,
+            status: .invoiced,
             requestDate: Date().addingTimeInterval(-60 * 60 * 24 * 75),
             language: "Englisch",
             attendeeCount: 400

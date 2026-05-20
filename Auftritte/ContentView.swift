@@ -23,8 +23,21 @@ struct ContentView: View {
     @State private var pdfURL: URL?
     @State private var showingCSVImport = false
     @State private var showingCSVExport = false
+    @State private var viewMode: ViewMode = .list
     @StateObject private var calendarService = CalendarService()
     @StateObject private var errorHandler = ErrorHandler()
+
+    enum ViewMode: String, CaseIterable, Identifiable {
+        case list = "Liste"
+        case table = "Tabelle"
+        var id: Self { self }
+        var icon: String {
+            switch self {
+            case .list:  return "list.bullet"
+            case .table: return "tablecells"
+            }
+        }
+    }
 
     var filteredKeynotes: [Keynote] {
         var filtered = keynotes
@@ -37,7 +50,7 @@ struct ContentView: View {
             case .pendenzSpeaker:
                 filtered = filtered.filter { $0.section == .pendenzSpeaker }
             case .datumUngeklaert:
-                filtered = filtered.filter { $0.inAbklaerung }
+                filtered = filtered.filter { $0.inAbklaerung && $0.eventDate >= Date() && $0.status != .cancelled }
             case .vereinbarteAuftritte:
                 filtered = filtered.filter { !$0.inAbklaerung && $0.eventDate >= Date() && $0.status != .cancelled }
             case .durchgefuehrt:
@@ -58,6 +71,8 @@ struct ContentView: View {
                 keynote.keynoteTheme.localizedCaseInsensitiveContains(searchText) ||
                 keynote.clientOrganization.localizedCaseInsensitiveContains(searchText) ||
                 keynote.location.localizedCaseInsensitiveContains(searchText) ||
+                keynote.contactFirstName.localizedCaseInsensitiveContains(searchText) ||
+                keynote.contactLastName.localizedCaseInsensitiveContains(searchText) ||
                 keynote.contactFullName.localizedCaseInsensitiveContains(searchText) ||
                 keynote.contactEmail.localizedCaseInsensitiveContains(searchText) ||
                 keynote.contactPhone.localizedCaseInsensitiveContains(searchText)
@@ -118,12 +133,38 @@ struct ContentView: View {
                 }
             }
         } content: {
-            // Spalte 2 — Gefilterte Auftritt-Liste
-            keynoteList
+            // Spalte 2 — Gefilterte Auftritt-Liste oder Tabelle
+            Group {
+                switch viewMode {
+                case .list:
+                    keynoteList
+                case .table:
+                    AuftritteTableView(
+                        keynotes: filteredKeynotes,
+                        selection: $selection,
+                        onUpdateStatus: updateStatus,
+                        onDelete: deleteKeynote
+                    )
+                }
+            }
             .navigationTitle(selectedCategory?.rawValue ?? "Auftritte")
-            .navigationSplitViewColumnWidth(min: 300, ideal: 400, max: 500)
+            .navigationSplitViewColumnWidth(
+                min: 300,
+                ideal: viewMode == .table ? 900 : 400,
+                max: viewMode == .table ? .infinity : 500
+            )
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Suchen...")
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Picker("Ansicht", selection: $viewMode) {
+                        ForEach(ViewMode.allCases) { mode in
+                            Label(mode.rawValue, systemImage: mode.icon).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                }
+
                 ToolbarItem(placement: .automatic) {
                     Menu {
                         Button(action: { statusFilter = nil }) {
@@ -339,7 +380,7 @@ struct KeynoteRowView: View {
     var body: some View {
         KeynoteListItemView(
             keynote: keynote,
-            contactName: keynote.contactHasData ? keynote.contactFullName : nil
+            contactName: keynote.contactHasData ? keynote.contactDisplayName : nil
         )
         .foregroundColor(.primary)
     }

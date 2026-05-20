@@ -16,7 +16,9 @@ final class Keynote {
     var keynoteTheme: String = ""
     var duration: Double = 60 // in Minuten (CloudKit-kompatibel)
     var clientOrganization: String = ""
-    var contactFullName: String = ""
+    var contactFirstName: String = ""
+    var contactLastName: String = ""
+    var contactFullName: String = "" // Legacy — wird per `migrateLegacyContactName()` in First/Last aufgeteilt
     var contactEmail: String = ""
     var contactPhone: String = ""
     var contactLocalID: String? // Lokale CNContact-ID für "In Kontakte öffnen" (gerätespezifisch)
@@ -30,15 +32,45 @@ final class Keynote {
     var language: String = "" // Sprache des Auftritts
     var inAbklaerung: Bool = false
     var pendenzRaw: String = Pendenz.speaker.rawValue
+    var pendenzNote: String = ""
+    var pendenzErledigt: Bool = false
     var attendeeCount: Int?
     
     // Computed properties für Kontakt-Darstellung (analog zu KeynoteContact)
     var contactDisplayName: String {
-        contactFullName.isEmpty ? "Unbekannter Kontakt" : contactFullName
+        let first = contactFirstName.trimmingCharacters(in: .whitespaces)
+        let last  = contactLastName.trimmingCharacters(in: .whitespaces)
+        switch (first.isEmpty, last.isEmpty) {
+        case (false, false): return "\(last), \(first)"
+        case (true,  false): return last
+        case (false, true):  return first
+        case (true,  true):  return contactFullName.isEmpty ? "Unbekannter Kontakt" : contactFullName
+        }
     }
-    
+
     var contactHasData: Bool {
-        !contactFullName.isEmpty || !contactEmail.isEmpty || !contactPhone.isEmpty
+        !contactFirstName.isEmpty ||
+        !contactLastName.isEmpty ||
+        !contactFullName.isEmpty ||
+        !contactEmail.isEmpty ||
+        !contactPhone.isEmpty
+    }
+
+    /// Splittet das Legacy-Feld `contactFullName` einmalig in `contactFirstName` und `contactLastName`.
+    /// Idempotent — überspringt bereits migrierte Datensätze.
+    func migrateLegacyContactName() {
+        guard contactFirstName.isEmpty,
+              contactLastName.isEmpty,
+              !contactFullName.isEmpty
+        else { return }
+        let trimmed = contactFullName.trimmingCharacters(in: .whitespaces)
+        let parts = trimmed.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+        if parts.count == 2 {
+            contactFirstName = String(parts[0])
+            contactLastName  = String(parts[1])
+        } else {
+            contactFirstName = trimmed
+        }
     }
     
     // Computed property für Status
@@ -76,6 +108,9 @@ final class Keynote {
         if inAbklaerung {
             return .datumInAbklaerung
         }
+        if pendenzErledigt {
+            return .auftrittsbereit
+        }
         switch pendenz {
         case .speaker: return .pendenzSpeaker
         case .client: return .pendenzClient
@@ -103,6 +138,8 @@ final class Keynote {
         keynoteTheme: String = "",
         duration: Double = 60,
         clientOrganization: String = "",
+        contactFirstName: String = "",
+        contactLastName: String = "",
         contactFullName: String = "",
         contactEmail: String = "",
         contactPhone: String = "",
@@ -117,6 +154,8 @@ final class Keynote {
         language: String = "",
         inAbklaerung: Bool = false,
         pendenz: Pendenz = .speaker,
+        pendenzNote: String = "",
+        pendenzErledigt: Bool = false,
         attendeeCount: Int? = nil
     ) {
         self.eventName = eventName
@@ -125,6 +164,8 @@ final class Keynote {
         self.keynoteTheme = keynoteTheme
         self.duration = duration
         self.clientOrganization = clientOrganization
+        self.contactFirstName = contactFirstName
+        self.contactLastName = contactLastName
         self.contactFullName = contactFullName
         self.contactEmail = contactEmail
         self.contactPhone = contactPhone
@@ -144,6 +185,8 @@ final class Keynote {
         self.language = language
         self.inAbklaerung = inAbklaerung
         self.pendenzRaw = pendenz.rawValue
+        self.pendenzNote = pendenzNote
+        self.pendenzErledigt = pendenzErledigt
         self.attendeeCount = attendeeCount
     }
 }

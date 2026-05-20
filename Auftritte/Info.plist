@@ -6,7 +6,5 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
-	<key>NSContactsUsageDescription</key>
-	<string>Zugriff um Name, Telefon und E-Mail zu erhalten</string>
 </dict>
 </plist>

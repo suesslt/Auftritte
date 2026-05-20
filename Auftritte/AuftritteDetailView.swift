@@ -138,33 +138,29 @@ struct KeynoteDetailView: View {
     
     private var contactSection: some View {
         Section("Kontakt") {
-            if keynote.contactHasData {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(keynote.contactDisplayName)
-                            .font(.headline)
-                        if !keynote.contactEmail.isEmpty {
-                            Text(keynote.contactEmail)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        if !keynote.contactPhone.isEmpty {
-                            Text(keynote.contactPhone)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Button("Ändern") {
-                        showingContactPicker = true
-                    }
-                }
-            } else {
-                Button(action: { showingContactPicker = true }) {
-                    Label("Primären Kontakt wählen", systemImage: "person.crop.circle.badge.plus")
-                }
+            TextField("Vorname", text: $keynote.contactFirstName)
+                .textContentType(.givenName)
+
+            TextField("Name", text: $keynote.contactLastName)
+                .textContentType(.familyName)
+
+            TextField("E-Mail", text: $keynote.contactEmail)
+                .textContentType(.emailAddress)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
+            TextField("Telefon", text: $keynote.contactPhone)
+                .textContentType(.telephoneNumber)
+                .keyboardType(.phonePad)
+
+            Button {
+                showingContactPicker = true
+            } label: {
+                Label(
+                    keynote.contactHasData ? "Aus Kontakten übernehmen" : "Aus Kontakten wählen",
+                    systemImage: "person.crop.circle.badge.plus"
+                )
             }
         }
     }
@@ -177,6 +173,11 @@ struct KeynoteDetailView: View {
                 }
             }
             .pickerStyle(.segmented)
+
+            TextField("Pendenz-Notiz", text: $keynote.pendenzNote, axis: .vertical)
+                .lineLimit(1...4)
+
+            Toggle("Erledigt", isOn: $keynote.pendenzErledigt)
         }
     }
     

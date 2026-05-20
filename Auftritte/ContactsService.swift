@@ -83,12 +83,13 @@ class ContactsService: ObservableObject {
     /// Schreibt die Kontaktdaten eines CNContact direkt auf eine Keynote.
     nonisolated func applyContact(from identifier: String, to keynote: Keynote) {
         guard let contact = getContact(identifier: identifier) else { return }
-        
-        let formatter = CNContactFormatter()
-        keynote.contactFullName = formatter.string(from: contact) ?? ""
-        keynote.contactEmail    = contact.emailAddresses.first?.value as String? ?? ""
-        keynote.contactPhone    = contact.phoneNumbers.first?.value.stringValue ?? ""
-        keynote.contactLocalID  = identifier
+
+        keynote.contactFirstName = contact.givenName
+        keynote.contactLastName  = contact.familyName
+        keynote.contactFullName  = "" // Legacy-Feld entleeren — neue Felder sind die Quelle der Wahrheit
+        keynote.contactEmail     = contact.emailAddresses.first?.value as String? ?? ""
+        keynote.contactPhone     = contact.phoneNumbers.first?.value.stringValue ?? ""
+        keynote.contactLocalID   = identifier
     }
     
     /// Try to find a matching CNContact for a Keynote's embedded contact data.
@@ -124,8 +125,18 @@ class ContactsService: ObservableObject {
                     }
                 }
                 
+                if !keynote.contactFirstName.isEmpty || !keynote.contactLastName.isEmpty {
+                    if contact.givenName == keynote.contactFirstName,
+                       contact.familyName == keynote.contactLastName {
+                        foundID = contact.identifier
+                        stop.pointee = true
+                        return
+                    }
+                }
+
                 let formatter = CNContactFormatter()
-                if let contactName = formatter.string(from: contact),
+                if !keynote.contactFullName.isEmpty,
+                   let contactName = formatter.string(from: contact),
                    contactName == keynote.contactFullName {
                     foundID = contact.identifier
                     stop.pointee = true

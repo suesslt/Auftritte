@@ -159,13 +159,13 @@ struct KeynoteStatistics {
     
     var pendingFees: Decimal {
         keynotes.filter { keynote in
-            keynote.status == .completedInvoiced
+            keynote.status == .invoiced
         }.reduce(0) { $0 + $1.agreedFee }
     }
-    
+
     var paidFees: Decimal {
         keynotes.filter { keynote in
-            keynote.status == .paid || keynote.status == .feedbackRequested || keynote.status == .closed
+            keynote.status == .paid || keynote.status == .closed
         }.reduce(0) { $0 + $1.agreedFee }
     }
     

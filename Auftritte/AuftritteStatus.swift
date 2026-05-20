@@ -43,21 +43,21 @@ enum KeynoteSection: Int, CaseIterable, Identifiable {
 // MARK: - Sidebar Category
 
 enum SidebarCategory: String, CaseIterable, Identifiable {
-    case alleAuftritte = "Alle Auftritte"
-    case pendenzSpeaker = "Pendenzen Speaker"
+    case vereinbarteAuftritte = "Kommende Auftritte"
+    case pendenzSpeaker = "Pendenzen"
     case datumUngeklaert = "Datum noch nicht geklärt"
-    case vereinbarteAuftritte = "Vereinbarte Auftritte"
-    case durchgefuehrt = "Durchgeführt"
+    case durchgefuehrt = "Vergangene Auftritte"
+    case alleAuftritte = "Alle Auftritte"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
-        case .alleAuftritte: return "rectangle.stack.fill"
+        case .vereinbarteAuftritte: return "calendar.badge.checkmark"
         case .pendenzSpeaker: return "person.badge.clock"
         case .datumUngeklaert: return "calendar.badge.exclamationmark"
-        case .vereinbarteAuftritte: return "calendar.badge.checkmark"
         case .durchgefuehrt: return "checkmark.circle.fill"
+        case .alleAuftritte: return "rectangle.stack.fill"
         }
     }
 }
@@ -70,14 +70,14 @@ enum KeynoteStatus: String, Codable, CaseIterable, Identifiable {
     case feeConfirmed = "Honorar bestätigt"
     case contentAgreed = "Thema, Inhalt und Zielpublikum vereinbart"
     case contractSigned = "Vertrag erstellt und Zustande gekommen"
-    case completedInvoiced = "Durchgeführt und in Rechnung gestellt"
+    case completed = "Durchgeführt"
+    case invoiced = "Rechnung gestellt"
     case paid = "Bezahlt"
-    case feedbackRequested = "Feedback angefragt"
     case closed = "Abgeschlossen"
     case cancelled = "Abgebrochen"
-    
+
     var id: String { rawValue }
-    
+
     var nextStatus: [KeynoteStatus] {
         switch self {
         case .requested:
@@ -89,18 +89,18 @@ enum KeynoteStatus: String, Codable, CaseIterable, Identifiable {
         case .contentAgreed:
             return [.contractSigned, .cancelled]
         case .contractSigned:
-            return [.completedInvoiced, .cancelled]
-        case .completedInvoiced:
+            return [.completed, .cancelled]
+        case .completed:
+            return [.invoiced, .cancelled]
+        case .invoiced:
             return [.paid, .cancelled]
         case .paid:
-            return [.feedbackRequested, .closed]
-        case .feedbackRequested:
             return [.closed]
         case .closed, .cancelled:
             return []
         }
     }
-    
+
     var color: Color {
         switch self {
         case .requested:
@@ -113,11 +113,11 @@ enum KeynoteStatus: String, Codable, CaseIterable, Identifiable {
             return .teal
         case .contractSigned:
             return .green
-        case .completedInvoiced:
+        case .completed:
             return .yellow
-        case .paid:
+        case .invoiced:
             return .orange
-        case .feedbackRequested:
+        case .paid:
             return .purple
         case .closed:
             return .gray
