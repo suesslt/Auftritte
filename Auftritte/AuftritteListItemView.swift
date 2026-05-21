@@ -43,17 +43,15 @@ struct KeynoteListItemView: View {
             
             // Datum und Ort
             HStack(spacing: 8) {
-                Label {
-                    if keynote.inAbklaerung {
-                        Text("\(keynote.eventDate.formatted(date: .abbreviated, time: .shortened)) (in Abklärung)")
-                    } else {
+                if !keynote.inAbklaerung {
+                    Label {
                         Text(keynote.eventDate.formatted(date: .abbreviated, time: .shortened))
+                    } icon: {
+                        Image(systemName: "calendar")
                     }
-                } icon: {
-                    Image(systemName: keynote.inAbklaerung ? "calendar.badge.exclamationmark" : "calendar")
+                    .font(.caption)
                 }
-                .font(.caption)
-                
+
                 if !keynote.location.isEmpty {
                     Label {
                         Text(keynote.location)

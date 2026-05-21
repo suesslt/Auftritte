@@ -13,10 +13,10 @@ import QuickLook
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Keynote.eventDate, order: .forward) private var keynotes: [Keynote]
-    
+
     @State private var searchText = ""
-    @State private var newKeynote: Keynote?
-    @State private var selection: Keynote.ID?
+    @State private var selectedKeynote: Keynote?
+    @State private var newKeynoteID: PersistentIdentifier?
     @State private var selectedCategory: SidebarCategory? = .alleAuftritte
     @State private var statusFilter: KeynoteStatus?
     @State private var showingStats = false
@@ -42,15 +42,14 @@ struct ContentView: View {
     var filteredKeynotes: [Keynote] {
         var filtered = keynotes
 
-        // Kategorie-Filter
         if let category = selectedCategory {
             switch category {
             case .alleAuftritte:
-                filtered = filtered.filter { !$0.inAbklaerung }
+                break // alle ohne Einschränkung
             case .pendenzSpeaker:
                 filtered = filtered.filter { $0.section == .pendenzSpeaker }
             case .datumUngeklaert:
-                filtered = filtered.filter { $0.inAbklaerung && $0.eventDate >= Date() && $0.status != .cancelled }
+                filtered = filtered.filter { $0.inAbklaerung && $0.status != .cancelled }
             case .vereinbarteAuftritte:
                 filtered = filtered.filter { !$0.inAbklaerung && $0.eventDate >= Date() && $0.status != .cancelled }
             case .durchgefuehrt:
@@ -58,12 +57,10 @@ struct ContentView: View {
             }
         }
 
-        // Status-Filter
         if let status = statusFilter {
             filtered = filtered.filter { $0.status == status }
         }
 
-        // Suchtext-Filter
         if !searchText.isEmpty {
             filtered = filtered.filter { keynote in
                 keynote.eventName.localizedCaseInsensitiveContains(searchText) ||
@@ -92,7 +89,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            // Spalte 1 — Sidebar: Kategorie-Navigation
+            // Sidebar — nur Kategorie-Filter
             List(selection: $selectedCategory) {
                 ForEach(SidebarCategory.allCases) { category in
                     Label(category.rawValue, systemImage: category.icon)
@@ -101,173 +98,152 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("Auftritte")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: createNewKeynote) {
-                        Label("Neuer Auftritt", systemImage: "plus")
+        } detail: {
+            NavigationStack {
+                keynoteListOrTable
+                    .navigationTitle(selectedCategory?.rawValue ?? "Auftritte")
+                    .searchable(text: $searchText, prompt: "Suchen...")
+                    .toolbar { mainToolbar }
+                    .navigationDestination(item: $selectedKeynote) { keynote in
+                        KeynoteDetailView(
+                            keynote: keynote,
+                            isNewKeynote: keynote.persistentModelID == newKeynoteID,
+                            onCancel: { handleEditorCancel(for: keynote) },
+                            onSave: {
+                                newKeynoteID = nil
+                                selectedKeynote = nil
+                            }
+                        )
                     }
-                }
-
-                ToolbarItem(placement: .automatic) {
-                    Menu {
-                        Button(action: { showingStats = true }) {
-                            Label("Statistiken", systemImage: "chart.bar.fill")
-                        }
-
-                        Button(action: { exportPDF() }) {
-                            Label("PDF exportieren", systemImage: "doc.fill")
-                        }
-
-                        Divider()
-
-                        Button(action: { showingCSVImport = true }) {
-                            Label("CSV importieren", systemImage: "square.and.arrow.down.on.square")
-                        }
-
-                        Button(action: { showingCSVExport = true }) {
-                            Label("CSV exportieren", systemImage: "square.and.arrow.up.on.square")
-                        }
-                    } label: {
-                        Label("Mehr", systemImage: "ellipsis.circle")
-                    }
-                }
-            }
-        } content: {
-            // Spalte 2 — Gefilterte Auftritt-Liste oder Tabelle
-            Group {
-                switch viewMode {
-                case .list:
-                    keynoteList
-                case .table:
-                    AuftritteTableView(
-                        keynotes: filteredKeynotes,
-                        selection: $selection,
-                        onUpdateStatus: updateStatus,
-                        onDelete: deleteKeynote
-                    )
-                }
-            }
-            .navigationTitle(selectedCategory?.rawValue ?? "Auftritte")
-            .navigationSplitViewColumnWidth(
-                min: 300,
-                ideal: viewMode == .table ? 900 : 400,
-                max: viewMode == .table ? .infinity : 500
-            )
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Suchen...")
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Picker("Ansicht", selection: $viewMode) {
-                        ForEach(ViewMode.allCases) { mode in
-                            Label(mode.rawValue, systemImage: mode.icon).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                }
-
-                ToolbarItem(placement: .automatic) {
-                    Menu {
-                        Button(action: { statusFilter = nil }) {
-                            Label("Alle", systemImage: statusFilter == nil ? "checkmark" : "")
-                        }
-
-                        Divider()
-
-                        ForEach(KeynoteStatus.allCases) { status in
-                            Button(action: { statusFilter = status }) {
-                                HStack {
-                                    Circle()
-                                        .fill(status.color)
-                                        .frame(width: 12, height: 12)
-                                    Text(status.rawValue)
-                                    if statusFilter == status {
-                                        Spacer()
-                                        Image(systemName: "checkmark")
+                    .sheet(isPresented: $showingStats) {
+                        NavigationStack {
+                            KeynoteStatsView()
+                                .toolbar {
+                                    ToolbarItem(placement: .confirmationAction) {
+                                        Button("Fertig") { showingStats = false }
                                     }
                                 }
-                            }
                         }
-                    } label: {
-                        Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                     }
-                }
-            }
-            .sheet(isPresented: $showingStats) {
-                NavigationStack {
-                    KeynoteStatsView()
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Fertig") {
-                                    showingStats = false
-                                }
-                            }
-                        }
-                }
-            }
-            .quickLookPreview($pdfURL)
-            .sheet(isPresented: $showingCSVImport) {
-                CSVImportView()
-            }
-            .sheet(isPresented: $showingCSVExport) {
-                CSVExportView(keynotes: filteredKeynotes)
-            }
-            .onChange(of: filteredKeynotes.map { $0.id }) { oldValue, newValue in
-                // Wenn die Selection nicht mehr in der Liste ist, deselektieren
-                if let currentSelection = selection,
-                   !newValue.contains(currentSelection) {
-                    selection = nil
-                }
-            }
-        } detail: {
-            if let newKeynote = newKeynote {
-                // Neuer Auftritt wird erstellt
-                KeynoteDetailView(
-                    keynote: newKeynote, 
-                    isNewKeynote: true,
-                    onCancel: {
-                        self.newKeynote = nil
-                        self.selection = nil
-                    },
-                    onSave: {
-                        self.newKeynote = nil
-                        // Selection bleibt, damit der neue Auftritt ausgewählt ist
+                    .sheet(isPresented: $showingCSVImport) {
+                        CSVImportView()
                     }
-                )
-            } else if let selectedID = selection,
-                      let keynote = keynotes.first(where: { $0.id == selectedID }) {
-                // Bestehender Auftritt wird bearbeitet
-                KeynoteDetailView(keynote: keynote, isNewKeynote: false)
-            } else {
-                ContentUnavailableView(
-                    "Wähle einen Auftritt",
-                    systemImage: "mic.fill",
-                    description: Text("Wähle einen Auftritt aus der Liste oder erstelle einen neuen.")
-                )
+                    .sheet(isPresented: $showingCSVExport) {
+                        CSVExportView(keynotes: filteredKeynotes)
+                    }
+                    .quickLookPreview($pdfURL)
             }
         }
         .task {
             _ = await calendarService.requestAccess()
         }
         .errorAlert(errorHandler: errorHandler)
+        .onChange(of: selectedCategory) { _, _ in selectedKeynote = nil }
+        .onChange(of: statusFilter) { _, _ in selectedKeynote = nil }
+        .onChange(of: selectedKeynote) { oldValue, newValue in
+            // Wenn der Editor für eine frisch erstellte, noch unverwendete Keynote geschlossen wird, löschen
+            guard let old = oldValue, old.persistentModelID != newValue?.persistentModelID else { return }
+            if old.persistentModelID == newKeynoteID, isDraftKeynote(old) {
+                modelContext.delete(old)
+                newKeynoteID = nil
+            }
+        }
     }
 
-    // MARK: - Extracted Views
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var mainToolbar: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Picker("Ansicht", selection: $viewMode) {
+                ForEach(ViewMode.allCases) { mode in
+                    Label(mode.rawValue, systemImage: mode.icon).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            Button(action: createNewKeynote) {
+                Label("Neuer Auftritt", systemImage: "plus")
+            }
+        }
+
+        ToolbarItem(placement: .automatic) {
+            Menu {
+                Button(action: { statusFilter = nil }) {
+                    Label("Alle", systemImage: statusFilter == nil ? "checkmark" : "")
+                }
+                Divider()
+                ForEach(KeynoteStatus.allCases) { status in
+                    Button(action: { statusFilter = status }) {
+                        HStack {
+                            Circle()
+                                .fill(status.color)
+                                .frame(width: 12, height: 12)
+                            Text(status.rawValue)
+                            if statusFilter == status {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+            }
+        }
+
+        ToolbarItem(placement: .automatic) {
+            Menu {
+                Button(action: { showingStats = true }) {
+                    Label("Statistiken", systemImage: "chart.bar.fill")
+                }
+                Button(action: { exportPDF() }) {
+                    Label("PDF exportieren", systemImage: "doc.fill")
+                }
+                Divider()
+                Button(action: { showingCSVImport = true }) {
+                    Label("CSV importieren", systemImage: "square.and.arrow.down.on.square")
+                }
+                Button(action: { showingCSVExport = true }) {
+                    Label("CSV exportieren", systemImage: "square.and.arrow.up.on.square")
+                }
+            } label: {
+                Label("Mehr", systemImage: "ellipsis.circle")
+            }
+        }
+    }
+
+    // MARK: - Liste / Tabelle
+
+    @ViewBuilder
+    private var keynoteListOrTable: some View {
+        switch viewMode {
+        case .list:
+            keynoteList
+        case .table:
+            AuftritteTableView(
+                keynotes: filteredKeynotes,
+                selection: $selectedKeynote,
+                onUpdateStatus: updateStatus,
+                onDelete: deleteKeynote
+            )
+        }
+    }
 
     private var keynoteList: some View {
-        List(selection: $selection) {
+        List {
             if selectedCategory == .alleAuftritte || selectedCategory == .vereinbarteAuftritte {
-                // Keine Gruppierung - nur nach Datum sortiert
                 ForEach(filteredKeynotes) { keynote in
                     keynoteRow(for: keynote)
-                        .tag(keynote.id)
                 }
             } else {
-                // Gruppierung nach Section
                 ForEach(groupedKeynotes, id: \.section) { group in
                     Section(group.section.title) {
                         ForEach(group.keynotes) { keynote in
                             keynoteRow(for: keynote)
-                                .tag(keynote.id)
                         }
                     }
                 }
@@ -278,7 +254,7 @@ struct ContentView: View {
 
     private func keynoteRow(for keynote: Keynote) -> some View {
         Button {
-            selection = keynote.id
+            selectedKeynote = keynote
         } label: {
             KeynoteRowView(keynote: keynote)
         }
@@ -315,7 +291,7 @@ struct ContentView: View {
         }
         .contextMenu {
             Button {
-                selection = keynote.id
+                selectedKeynote = keynote
             } label: {
                 Label("Bearbeiten", systemImage: "pencil")
             }
@@ -326,33 +302,48 @@ struct ContentView: View {
                 Label("Löschen", systemImage: "trash")
             }
         }
-        .listRowBackground(
-            selection == keynote.id ? Color.accentColor.opacity(0.15) : Color.clear
-        )
     }
 
     // MARK: - Actions
 
     private func createNewKeynote() {
         let keynote = Keynote()
-        newKeynote = keynote
-        selection = keynote.id
+        modelContext.insert(keynote)
+        newKeynoteID = keynote.persistentModelID
+        selectedKeynote = keynote
     }
-    
+
+    private func handleEditorCancel(for keynote: Keynote) {
+        // Cancel wird nur für neue Keynotes ausgelöst → immer löschen
+        if keynote.persistentModelID == newKeynoteID {
+            modelContext.delete(keynote)
+        }
+        newKeynoteID = nil
+        selectedKeynote = nil
+    }
+
+    private func isDraftKeynote(_ keynote: Keynote) -> Bool {
+        // Heuristik: noch nicht inhaltlich befüllt
+        keynote.eventName.isEmpty &&
+        keynote.keynoteTitle.isEmpty &&
+        keynote.clientOrganization.isEmpty
+    }
+
     private func updateStatus(for keynote: Keynote, to status: KeynoteStatus) {
         withAnimation {
             keynote.status = status
         }
     }
-    
+
     private func deleteKeynote(_ keynote: Keynote) {
         withAnimation {
-            // Deselektieren wenn das Element gelöscht wird
-            if selection == keynote.id {
-                selection = nil
+            if selectedKeynote?.persistentModelID == keynote.persistentModelID {
+                selectedKeynote = nil
             }
-            
-            // Kalender-Event löschen, falls vorhanden
+            if keynote.persistentModelID == newKeynoteID {
+                newKeynoteID = nil
+            }
+
             if let eventID = keynote.calendarEventID {
                 Task {
                     try? await calendarService.deleteEvent(eventID: eventID)
@@ -361,7 +352,7 @@ struct ContentView: View {
             modelContext.delete(keynote)
         }
     }
-    
+
     private func exportPDF() {
         let pdfData = KeynotePDFGenerator.generatePDF(
             keynotes: keynotes.filter { !$0.inAbklaerung },

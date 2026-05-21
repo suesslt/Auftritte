@@ -30,6 +30,7 @@ struct KeynoteDetailView: View {
     var body: some View {
         Form {
             basicInfoSection
+            dateTimeSection
             detailsSection
             contactSection
             pendenzSection
@@ -77,15 +78,6 @@ struct KeynoteDetailView: View {
     private var basicInfoSection: some View {
         Section("Grundinformationen") {
             TextField("Name des Anlasses", text: $keynote.eventName)
-            
-            HStack {
-                Text("Datum Anlass")
-                Spacer()
-                DatePicker("", selection: $keynote.eventDate)
-                    .labelsHidden()
-                Toggle("In Abklärung", isOn: $keynote.inAbklaerung)
-                    .fixedSize()
-            }
 
             TextField("Titel der Keynote", text: $keynote.keynoteTitle)
             
@@ -104,7 +96,21 @@ struct KeynoteDetailView: View {
             TextField("Sprache", text: $keynote.language)
         }
     }
-    
+
+    private var dateTimeSection: some View {
+        Section("Datum und Zeit") {
+            Toggle("Datum bekannt", isOn: Binding(
+                get: { !keynote.inAbklaerung },
+                set: { keynote.inAbklaerung = !$0 }
+            ))
+
+            if !keynote.inAbklaerung {
+                DatePicker("Datum", selection: $keynote.eventDate, displayedComponents: .date)
+                DatePicker("Zeit", selection: $keynote.eventDate, displayedComponents: .hourAndMinute)
+            }
+        }
+    }
+
     private var detailsSection: some View {
         Section("Details") {
             TextField("Firma/Organisation", text: $keynote.clientOrganization)

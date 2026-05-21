@@ -35,7 +35,7 @@ private struct ColumnWidths: RawRepresentable, Codable {
 
 struct AuftritteTableView: View {
     let keynotes: [Keynote]
-    @Binding var selection: Keynote.ID?
+    @Binding var selection: Keynote?
     let onUpdateStatus: (Keynote, KeynoteStatus) -> Void
     let onDelete: (Keynote) -> Void
 
@@ -218,7 +218,11 @@ struct AuftritteTableView: View {
     private func dataRow(for keynote: Keynote) -> some View {
         HStack(spacing: Self.columnSpacing) {
             cell(idx: 0) {
-                Text(keynote.eventDate, format: .dateTime.day().month().year())
+                if keynote.inAbklaerung {
+                    Text("")
+                } else {
+                    Text(keynote.eventDate, format: .dateTime.day().month().year())
+                }
             }
             cell(idx: 1) {
                 Text(keynote.eventName).lineLimit(1)
@@ -241,10 +245,10 @@ struct AuftritteTableView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(selection == keynote.id ? Color.accentColor.opacity(0.15) : Color.clear)
+        .background(selection?.id == keynote.id ? Color.accentColor.opacity(0.15) : Color.clear)
         .contentShape(Rectangle())
         .onTapGesture {
-            selection = keynote.id
+            selection = keynote
         }
         .contextMenu {
             Menu {
@@ -332,7 +336,7 @@ struct AuftritteTableView: View {
 }
 
 #Preview {
-    @Previewable @State var selection: Keynote.ID?
+    @Previewable @State var selection: Keynote?
     return AuftritteTableView(
         keynotes: [],
         selection: $selection,
