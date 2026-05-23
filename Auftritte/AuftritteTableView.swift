@@ -33,22 +33,31 @@ private struct ColumnWidths: RawRepresentable, Codable {
 
 // MARK: - View
 
+enum AuftritteTableMode {
+    case standard
+    case pendenzen
+}
+
 struct AuftritteTableView: View {
     let keynotes: [Keynote]
     @Binding var selection: Keynote?
     let onUpdateStatus: (Keynote, KeynoteStatus) -> Void
     let onDelete: (Keynote) -> Void
+    var mode: AuftritteTableMode = .standard
 
     @State private var sortKey: SortKey = .eventDate
     @State private var sortAscending: Bool = true
 
-    @AppStorage("auftritteTableColumnWidths")
-    private var storedWidths = ColumnWidths(values: AuftritteTableView.defaultWidths)
+    @AppStorage("auftritteTableColumnWidths.standard")
+    private var storedWidthsStandard = ColumnWidths(values: AuftritteTableView.defaultWidthsStandard)
+
+    @AppStorage("auftritteTableColumnWidths.pendenzen")
+    private var storedWidthsPendenzen = ColumnWidths(values: AuftritteTableView.defaultWidthsPendenzen)
 
     @State private var dragStartWidths: [Int: CGFloat] = [:]
 
     private enum SortKey {
-        case eventDate, eventName, keynoteTheme, contactLastName, agreedFee, statusRaw
+        case eventDate, eventName, keynoteTheme, contactLastName, agreedFee, statusRaw, pendenzNote
     }
 
     // MARK: - Spalten-Konfiguration
@@ -60,12 +69,13 @@ struct AuftritteTableView: View {
         let alignment: HorizontalAlignment
     }
 
-    private static let defaultWidths: [CGFloat] = [110, 200, 220, 240, 110, 180]
+    private static let defaultWidthsStandard: [CGFloat] = [110, 200, 220, 240, 110, 180]
+    private static let defaultWidthsPendenzen: [CGFloat] = [110, 220, 280, 240]
     private static let minColumnWidth: CGFloat = 60
     private static let handleWidth: CGFloat = 6
     private static let columnSpacing: CGFloat = 16
 
-    private let columns: [ColumnConfig] = [
+    private static let standardColumns: [ColumnConfig] = [
         .init(title: "Datum",         defaultWidth: 110, key: .eventDate,       alignment: .leading),
         .init(title: "Anlass",        defaultWidth: 200, key: .eventName,       alignment: .leading),
         .init(title: "Thema",         defaultWidth: 220, key: .keynoteTheme,    alignment: .leading),
@@ -73,6 +83,34 @@ struct AuftritteTableView: View {
         .init(title: "Honorar",       defaultWidth: 110, key: .agreedFee,       alignment: .trailing),
         .init(title: "Status",        defaultWidth: 180, key: .statusRaw,       alignment: .leading)
     ]
+
+    private static let pendenzenColumns: [ColumnConfig] = [
+        .init(title: "Datum",         defaultWidth: 110, key: .eventDate,       alignment: .leading),
+        .init(title: "Anlass",        defaultWidth: 220, key: .eventName,       alignment: .leading),
+        .init(title: "Pendenz",       defaultWidth: 280, key: .pendenzNote,     alignment: .leading),
+        .init(title: "Kontaktperson", defaultWidth: 240, key: .contactLastName, alignment: .leading)
+    ]
+
+    private var columns: [ColumnConfig] {
+        switch mode {
+        case .standard:  return Self.standardColumns
+        case .pendenzen: return Self.pendenzenColumns
+        }
+    }
+
+    private var storedWidths: ColumnWidths {
+        switch mode {
+        case .standard:  return storedWidthsStandard
+        case .pendenzen: return storedWidthsPendenzen
+        }
+    }
+
+    private func setStoredWidths(_ widths: ColumnWidths) {
+        switch mode {
+        case .standard:  storedWidthsStandard = widths
+        case .pendenzen: storedWidthsPendenzen = widths
+        }
+    }
 
     private func width(at idx: Int) -> CGFloat {
         guard idx < storedWidths.values.count else { return columns[idx].defaultWidth }
@@ -99,6 +137,7 @@ struct AuftritteTableView: View {
                 }
             case .agreedFee:        result = lhs.agreedFeeInCents < rhs.agreedFeeInCents
             case .statusRaw:        result = lhs.statusRaw.localizedCompare(rhs.statusRaw) == .orderedAscending
+            case .pendenzNote:      result = lhs.pendenzNote.localizedCompare(rhs.pendenzNote) == .orderedAscending
             }
             return sortAscending ? result : !result
         }
@@ -193,7 +232,7 @@ struct AuftritteTableView: View {
                             values.append(columns[values.count].defaultWidth)
                         }
                         values[idx] = newWidth
-                        storedWidths = ColumnWidths(values: values)
+                        setStoredWidths(ColumnWidths(values: values))
                     }
                     .onEnded { _ in
                         dragStartWidths[idx] = nil
@@ -217,30 +256,24 @@ struct AuftritteTableView: View {
 
     private func dataRow(for keynote: Keynote) -> some View {
         HStack(spacing: Self.columnSpacing) {
-            cell(idx: 0) {
-                if keynote.inAbklaerung {
-                    Text("")
-                } else {
-                    Text(keynote.eventDate, format: .dateTime.day().month().year())
+            switch mode {
+            case .standard:
+                cell(idx: 0) { dateCell(keynote) }
+                cell(idx: 1) { Text(keynote.eventName).lineLimit(1) }
+                cell(idx: 2) { Text(keynote.keynoteTheme).lineLimit(1) }
+                cell(idx: 3) { Text(Self.formatContact(keynote)).lineLimit(1) }
+                cell(idx: 4) { Text(Self.formatFee(keynote.agreedFee)).monospacedDigit() }
+                cell(idx: 5) {
+                    HStack(spacing: 6) {
+                        Circle().fill(keynote.status.color).frame(width: 10, height: 10)
+                        Text(keynote.status.rawValue).lineLimit(1)
+                    }
                 }
-            }
-            cell(idx: 1) {
-                Text(keynote.eventName).lineLimit(1)
-            }
-            cell(idx: 2) {
-                Text(keynote.keynoteTheme).lineLimit(1)
-            }
-            cell(idx: 3) {
-                Text(Self.formatContact(keynote)).lineLimit(1)
-            }
-            cell(idx: 4) {
-                Text(Self.formatFee(keynote.agreedFee)).monospacedDigit()
-            }
-            cell(idx: 5) {
-                HStack(spacing: 6) {
-                    Circle().fill(keynote.status.color).frame(width: 10, height: 10)
-                    Text(keynote.status.rawValue).lineLimit(1)
-                }
+            case .pendenzen:
+                cell(idx: 0) { dateCell(keynote) }
+                cell(idx: 1) { Text(keynote.eventName).lineLimit(1) }
+                cell(idx: 2) { Text(keynote.pendenzNote).lineLimit(1) }
+                cell(idx: 3) { Text(Self.formatContact(keynote)).lineLimit(1) }
             }
         }
         .padding(.horizontal, 12)
@@ -300,7 +333,19 @@ struct AuftritteTableView: View {
     // MARK: - Reset
 
     private func resetWidths() {
-        storedWidths = ColumnWidths(values: Self.defaultWidths)
+        switch mode {
+        case .standard:  storedWidthsStandard = ColumnWidths(values: Self.defaultWidthsStandard)
+        case .pendenzen: storedWidthsPendenzen = ColumnWidths(values: Self.defaultWidthsPendenzen)
+        }
+    }
+
+    @ViewBuilder
+    private func dateCell(_ keynote: Keynote) -> some View {
+        if keynote.inAbklaerung {
+            Text("")
+        } else {
+            Text(keynote.eventDate, format: .dateTime.day().month().year())
+        }
     }
 
     // MARK: - Formatter
@@ -317,7 +362,7 @@ struct AuftritteTableView: View {
         }
         let phone = keynote.contactPhone.trimmingCharacters(in: .whitespaces)
         switch (name.isEmpty, phone.isEmpty) {
-        case (false, false): return "\(name) — \(phone)"
+        case (false, false): return "\(name), \(phone)"
         case (false, true):  return name
         case (true,  false): return phone
         case (true,  true):  return ""

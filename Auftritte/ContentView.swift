@@ -47,7 +47,7 @@ struct ContentView: View {
             case .alleAuftritte:
                 break // alle ohne Einschränkung
             case .pendenzSpeaker:
-                filtered = filtered.filter { $0.section == .pendenzSpeaker }
+                filtered = filtered.filter { $0.pendenz == .speaker && !$0.pendenzErledigt }
             case .datumUngeklaert:
                 filtered = filtered.filter { $0.inAbklaerung && $0.status != .cancelled }
             case .vereinbarteAuftritte:
@@ -228,7 +228,8 @@ struct ContentView: View {
                 keynotes: filteredKeynotes,
                 selection: $selectedKeynote,
                 onUpdateStatus: updateStatus,
-                onDelete: deleteKeynote
+                onDelete: deleteKeynote,
+                mode: selectedCategory == .pendenzSpeaker ? .pendenzen : .standard
             )
         }
     }
