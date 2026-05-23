@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var pdfURL: URL?
     @State private var showingCSVImport = false
     @State private var showingCSVExport = false
+    @State private var showingDeleteAllConfirmation = false
     @State private var viewMode: ViewMode = .list
     @StateObject private var calendarService = CalendarService()
     @StateObject private var errorHandler = ErrorHandler()
@@ -131,6 +132,12 @@ struct ContentView: View {
                     .sheet(isPresented: $showingCSVExport) {
                         CSVExportView(keynotes: filteredKeynotes)
                     }
+                    .sheet(isPresented: $showingDeleteAllConfirmation) {
+                        DeleteAllConfirmationView(
+                            count: keynotes.count,
+                            onConfirm: { deleteAllKeynotes() }
+                        )
+                    }
                     .quickLookPreview($pdfURL)
             }
         }
@@ -209,6 +216,12 @@ struct ContentView: View {
                 }
                 Button(action: { showingCSVExport = true }) {
                     Label("CSV exportieren", systemImage: "square.and.arrow.up.on.square")
+                }
+                Divider()
+                Button(role: .destructive) {
+                    showingDeleteAllConfirmation = true
+                } label: {
+                    Label("Alle Auftritte löschen", systemImage: "trash.fill")
                 }
             } label: {
                 Label("Mehr", systemImage: "ellipsis.circle")
@@ -354,9 +367,18 @@ struct ContentView: View {
         }
     }
 
+    private func deleteAllKeynotes() {
+        selectedKeynote = nil
+        newKeynoteID = nil
+        for keynote in keynotes {
+            modelContext.delete(keynote)
+        }
+        showingDeleteAllConfirmation = false
+    }
+
     private func exportPDF() {
         let pdfData = KeynotePDFGenerator.generatePDF(
-            keynotes: keynotes.filter { !$0.inAbklaerung },
+            keynotes: Array(keynotes),
             title: "Auftrittsübersicht"
         )
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("Auftrittsübersicht.pdf")
@@ -375,6 +397,58 @@ struct KeynoteRowView: View {
             contactName: keynote.contactHasData ? keynote.contactDisplayName : nil
         )
         .foregroundColor(.primary)
+    }
+}
+
+// MARK: - Delete-All Bestätigung
+
+private struct DeleteAllConfirmationView: View {
+    let count: Int
+    let onConfirm: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmationText: String = ""
+
+    private static let confirmationPhrase = "Auftritte"
+
+    private var canDelete: Bool {
+        confirmationText.trimmingCharacters(in: .whitespaces) == Self.confirmationPhrase
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Label(
+                        "Diese Aktion löscht alle \(count) Auftritte unwiderruflich aus dieser App. Kalender-Einträge bleiben erhalten.",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .foregroundStyle(.red)
+                }
+
+                Section("Bestätigung") {
+                    Text("Geben Sie zur Bestätigung '\(Self.confirmationPhrase)' ein:")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    TextField(Self.confirmationPhrase, text: $confirmationText)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                }
+            }
+            .navigationTitle("Alle Auftritte löschen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Löschen", role: .destructive) {
+                        onConfirm()
+                    }
+                    .disabled(!canDelete)
+                }
+            }
+        }
     }
 }
 

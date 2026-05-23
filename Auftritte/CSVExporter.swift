@@ -26,6 +26,8 @@ actor KeynoteCSVExporter {
         "requestDate",
         "notes",
         "language",
+        "contactFirstName",
+        "contactLastName",
         "contactFullName",
         "contactEmail",
         "contactPhone",
@@ -67,7 +69,8 @@ actor KeynoteCSVExporter {
 
     // MARK: - Private Helpers
 
-    private func buildCSV(_ keynotes: [Keynote]) -> String {
+    /// Erzeugt CSV-Text aus den übergebenen Keynotes. Intern für Tests sichtbar.
+    func buildCSV(_ keynotes: [Keynote]) -> String {
         var lines: [String] = []
         lines.append(Self.headers.map { csvField($0) }.joined(separator: ","))
         for keynote in keynotes {
@@ -92,6 +95,8 @@ actor KeynoteCSVExporter {
             isoFormatter.string(from: keynote.requestDate),
             keynote.notes,
             keynote.language,
+            keynote.contactFirstName,
+            keynote.contactLastName,
             Self.combinedContactName(keynote),
             keynote.contactEmail,
             keynote.contactPhone,

@@ -56,10 +56,21 @@ actor KeynoteCSVImporter {
         "eventName", "eventDate", "keynoteTitle", "keynoteTheme", "duration",
         "clientOrganization", "agreedFeeInCents", "targetAudience", "location",
         "statusRaw", "requestDate", "notes", "language",
-        "contactFullName", "contactEmail", "contactPhone",
+        "contactFirstName", "contactLastName", "contactFullName",
+        "contactEmail", "contactPhone",
         "inAbklaerung", "pendenzRaw", "pendenzNote", "pendenzErledigt",
         "attendeeCount"
     ]
+
+    /// Migrations-Mapping für obsolete Status-Werte (alte CSV-Exporte).
+    /// Identisch mit `AuftritteApp.runStatusMigration()`.
+    static func mappedStatusRaw(_ raw: String) -> String {
+        switch raw {
+        case "Durchgeführt und in Rechnung gestellt": return KeynoteStatus.completed.rawValue
+        case "Feedback angefragt":                    return KeynoteStatus.closed.rawValue
+        default:                                      return raw
+        }
+    }
     
     // ISO 8601 Date Formatter (wie im Export verwendet)
     private let isoFormatter: ISO8601DateFormatter = {
@@ -133,11 +144,11 @@ actor KeynoteCSVImporter {
         let agreedFeeInCents   = Int64(fields["agreedFeeInCents"] ?? "") ?? 0
         let targetAudience     = fields["targetAudience"] ?? ""
         let location           = fields["location"] ?? ""
-        let statusRaw          = fields["statusRaw"] ?? KeynoteStatus.requested.rawValue
+        let statusRaw          = Self.mappedStatusRaw(fields["statusRaw"] ?? KeynoteStatus.requested.rawValue)
         let requestDate        = parseDate(fields["requestDate"]) ?? Date()
         let notes              = fields["notes"] ?? ""
         let language           = fields["language"] ?? ""
-        
+
         // Status – Fallback auf .requested wenn unbekannt
         let status = KeynoteStatus(rawValue: statusRaw) ?? .requested
 
@@ -148,8 +159,17 @@ actor KeynoteCSVImporter {
         let pendenzNote = fields["pendenzNote"] ?? ""
         let pendenzErledigt = (fields["pendenzErledigt"] ?? "false").lowercased() == "true"
 
-        // Keynote erstellen
-        let (importedFirstName, importedLastName) = Self.splitContactName(fields["contactFullName"] ?? "")
+        // Kontaktnamen: explizite Spalten bevorzugt, sonst Heuristik aus contactFullName
+        let explicitFirst = fields["contactFirstName"] ?? ""
+        let explicitLast  = fields["contactLastName"] ?? ""
+        let importedFirstName: String
+        let importedLastName: String
+        if !explicitFirst.isEmpty || !explicitLast.isEmpty {
+            importedFirstName = explicitFirst
+            importedLastName  = explicitLast
+        } else {
+            (importedFirstName, importedLastName) = Self.splitContactName(fields["contactFullName"] ?? "")
+        }
         let keynote = Keynote(
             eventName: rawEventName,
             eventDate: eventDate,
