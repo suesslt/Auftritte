@@ -61,11 +61,15 @@ struct KeynotesApp: App {
     /// Migriert obsolete Status-Werte:
     /// - "Durchgeführt und in Rechnung gestellt" → "Durchgeführt"
     /// - "Feedback angefragt" → "Abgeschlossen"
+    /// - "Bezahlt" → "Abgeschlossen"
+    /// - "Abgesagt" → "Abgebrochen"
     /// Idempotent — wirkt nur auf Datensätze mit alten Werten.
     private func runStatusMigration() {
         let mapping: [String: KeynoteStatus] = [
             "Durchgeführt und in Rechnung gestellt": .completed,
-            "Feedback angefragt": .closed
+            "Feedback angefragt": .closed,
+            "Bezahlt": .closed,
+            "Abgesagt": .cancelled
         ]
         let context = sharedModelContainer.mainContext
         guard let keynotes = try? context.fetch(FetchDescriptor<Keynote>()) else { return }

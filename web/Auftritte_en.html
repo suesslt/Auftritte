@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auftritte – Auftrittsverwaltung für Keynote-Speaker</title>
-    <meta name="description" content="Auftritte ist die professionelle Verwaltung für Keynote-Speaker, Vortragsredner und Berater. Von der Anfrage bis zur bezahlten Rechnung, synchron über iCloud.">
+    <title>Auftritte – Engagement Management for Keynote Speakers</title>
+    <meta name="description" content="Auftritte is the professional engagement manager for keynote speakers, professional speakers, and consultants. From the first inquiry to the paid invoice, in sync across iCloud.">
     <style>
         :root {
             --bg: #ffffff;
@@ -95,6 +95,7 @@
         .nav-links {
             display: flex;
             gap: 28px;
+            align-items: center;
         }
 
         .nav-links a {
@@ -106,6 +107,14 @@
 
         .nav-links a:hover {
             color: var(--accent);
+        }
+
+        .lang-link {
+            font-size: 13px;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 100px;
         }
 
         @media (max-width: 560px) {
@@ -319,6 +328,15 @@
         footer p + p {
             margin-top: 6px;
         }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--accent);
+        }
     </style>
 </head>
 <body>
@@ -326,9 +344,11 @@
         <div class="container nav">
             <a href="#" class="brand">Auftritte</a>
             <nav class="nav-links">
-                <a href="#nutzen">Nutzen</a>
+                <a href="#benefits">Benefits</a>
                 <a href="#workflow">Workflow</a>
                 <a href="#support">Support</a>
+                <a href="datenschutz_en.html">Privacy</a>
+                <a href="index.html" class="lang-link">Deutsch</a>
             </nav>
         </div>
     </header>
@@ -337,58 +357,58 @@
         <!-- Hero -->
         <section class="hero">
             <div class="container">
-                <h1>Auftritte verwalten.<br>Von der Anfrage bis zur Bezahlung.</h1>
-                <p class="lead">Die professionelle App für Keynote-Speaker, Vortragsredner und Berater. Behalten Sie jede Anfrage, jeden bestätigten Termin und jede offene Rechnung im Überblick.</p>
+                <h1>Manage every engagement.<br>From inquiry to paid invoice.</h1>
+                <p class="lead">The professional app for keynote speakers, lecturers, and consultants. Keep every inquiry, every confirmed booking, and every outstanding invoice in clear view.</p>
                 <div class="platforms">
                     <span>iPhone</span>
                     <span>iPad</span>
                     <span>Mac</span>
-                    <span>iCloud-Sync</span>
+                    <span>iCloud sync</span>
                 </div>
             </div>
         </section>
 
-        <!-- Nutzen -->
-        <section id="nutzen">
+        <!-- Benefits -->
+        <section id="benefits">
             <div class="container">
-                <h2 class="section-title">Was Auftritte für Sie tut</h2>
-                <p class="section-sub">Sechs Gründe, warum selbstständige Speaker und Berater ihre Engagements mit Auftritte verwalten.</p>
+                <h2 class="section-title">What Auftritte does for you</h2>
+                <p class="section-sub">Six reasons why self-employed speakers and consultants manage their engagements with Auftritte.</p>
 
                 <div class="benefits">
                     <div class="benefit">
                         <div class="benefit-icon">→</div>
-                        <h3>Klarer Status-Workflow</h3>
-                        <p>Von der ersten Anfrage über Vertrag und Durchführung bis zur bezahlten Rechnung – jeder Auftritt durchläuft definierte Stufen mit farblicher Markierung.</p>
+                        <h3>A clear status workflow</h3>
+                        <p>From first inquiry through contract and delivery to a paid invoice — every engagement moves through defined stages with colour-coded states.</p>
                     </div>
 
                     <div class="benefit">
                         <div class="benefit-icon">⌕</div>
-                        <h3>Sofort finden</h3>
-                        <p>Volltext-Suche über Eventname, Titel, Thema, Auftraggeber, Ort und Kontaktdaten. Sidebar-Filter trennen Kommendes, Pendenzen und Vergangenes.</p>
+                        <h3>Find anything fast</h3>
+                        <p>Full-text search across event name, title, theme, client, location, and contact details. Sidebar filters separate upcoming, pending, and past engagements.</p>
                     </div>
 
                     <div class="benefit">
                         <div class="benefit-icon">⊞</div>
-                        <h3>Liste oder Tabelle</h3>
-                        <p>Per Knopfdruck zwischen kompakter Liste und sortierbarer Tabelle wechseln. Spaltenbreiten lassen sich individuell anpassen und bleiben erhalten.</p>
+                        <h3>List or table</h3>
+                        <p>Switch between a compact list and a sortable table with one tap. Column widths can be adjusted individually and persist across launches.</p>
                     </div>
 
                     <div class="benefit">
                         <div class="benefit-icon">⌑</div>
-                        <h3>Kontakte und Kalender</h3>
-                        <p>Kontaktpersonen direkt aus dem Adressbuch übernehmen. Termine mit einem Klick in den Kalender exportieren. Native Integration mit iOS und macOS.</p>
+                        <h3>Contacts and calendar built in</h3>
+                        <p>Pull a contact from your address book in one step. Push the event date to your calendar with one tap. Native iOS and macOS integration.</p>
                     </div>
 
                     <div class="benefit">
                         <div class="benefit-icon">⌃</div>
-                        <h3>Honorar im Griff</h3>
-                        <p>Vereinbarte Honorare in CHF erfassen. Die Statistik zeigt jederzeit, welche Beträge offen und welche bereits bezahlt sind.</p>
+                        <h3>Fees under control</h3>
+                        <p>Record agreed fees in CHF. The statistics view shows at a glance which amounts are outstanding and which have been paid.</p>
                     </div>
 
                     <div class="benefit">
                         <div class="benefit-icon">↻</div>
-                        <h3>Überall verfügbar</h3>
-                        <p>iCloud-Sync hält Ihre Daten auf iPhone, iPad und Mac aktuell. CSV-Import bringt bestehende Daten hinein, PDF-Export liefert Übersichten für die Buchhaltung.</p>
+                        <h3>Available everywhere</h3>
+                        <p>iCloud sync keeps your data current on iPhone, iPad, and Mac. CSV import brings existing data in, PDF export produces an overview for accounting.</p>
                     </div>
                 </div>
             </div>
@@ -397,19 +417,19 @@
         <!-- Workflow -->
         <section id="workflow" class="alt">
             <div class="container">
-                <h2 class="section-title">Jeder Auftritt, klar verfolgt</h2>
-                <p class="section-sub">Von der Anfrage bis zum Abschluss. Jede Stufe markiert, jede Pendenz dokumentiert.</p>
+                <h2 class="section-title">Every engagement, clearly tracked</h2>
+                <p class="section-sub">From inquiry to closure. Every stage is marked, every outstanding task documented.</p>
 
                 <div class="workflow">
-                    <span class="workflow-step"><span class="dot" style="background:#0a84ff"></span>Angefragt</span>
-                    <span class="workflow-step"><span class="dot" style="background:#5ac8fa"></span>Termin bestätigt</span>
-                    <span class="workflow-step"><span class="dot" style="background:#30d158"></span>Honorar bestätigt</span>
-                    <span class="workflow-step"><span class="dot" style="background:#30d158"></span>Inhalt vereinbart</span>
-                    <span class="workflow-step"><span class="dot" style="background:#34c759"></span>Vertrag</span>
-                    <span class="workflow-step"><span class="dot" style="background:#ffd60a"></span>Durchgeführt</span>
-                    <span class="workflow-step"><span class="dot" style="background:#ff9500"></span>Rechnung gestellt</span>
-                    <span class="workflow-step"><span class="dot" style="background:#bf5af2"></span>Bezahlt</span>
-                    <span class="workflow-step"><span class="dot" style="background:#8e8e93"></span>Abgeschlossen</span>
+                    <span class="workflow-step"><span class="dot" style="background:#0a84ff"></span>Requested</span>
+                    <span class="workflow-step"><span class="dot" style="background:#5ac8fa"></span>Date confirmed</span>
+                    <span class="workflow-step"><span class="dot" style="background:#30d158"></span>Fee confirmed</span>
+                    <span class="workflow-step"><span class="dot" style="background:#30d158"></span>Content agreed</span>
+                    <span class="workflow-step"><span class="dot" style="background:#34c759"></span>Contract signed</span>
+                    <span class="workflow-step"><span class="dot" style="background:#ffd60a"></span>Completed</span>
+                    <span class="workflow-step"><span class="dot" style="background:#ff9500"></span>Invoiced</span>
+                    <span class="workflow-step"><span class="dot" style="background:#bf5af2"></span>Paid</span>
+                    <span class="workflow-step"><span class="dot" style="background:#8e8e93"></span>Closed</span>
                 </div>
             </div>
         </section>
@@ -419,11 +439,11 @@
             <div class="container">
                 <div class="support-card">
                     <h2>Support</h2>
-                    <p>Fragen, Feedback oder ein Problem mit Auftritte? Wir sind per E-Mail erreichbar.</p>
+                    <p>Questions, feedback, or a problem with Auftritte? We are reachable by email.</p>
                     <a class="support-email" href="mailto:support@scoreware.com?subject=Auftritte%20Support">
                         support@scoreware.com
                     </a>
-                    <p class="support-meta">Bitte beschreiben Sie Ihr Anliegen so präzise wie möglich – inklusive der von Ihnen verwendeten Geräte und Versionsnummer.</p>
+                    <p class="support-meta">Please describe your request as precisely as possible — including the devices you are using and the app version.</p>
                 </div>
             </div>
         </section>
@@ -431,8 +451,9 @@
 
     <footer>
         <div class="container">
-            <p>© 2026 Scoreware. Alle Rechte vorbehalten.</p>
-            <p>Auftritte – Auftrittsverwaltung für Keynote-Speaker.</p>
+            <p>© 2026 Scoreware. All rights reserved.</p>
+            <p>Auftritte – engagement management for keynote speakers.</p>
+            <p><a href="datenschutz_en.html">Privacy</a></p>
         </div>
     </footer>
 </body>

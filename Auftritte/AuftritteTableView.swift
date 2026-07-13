@@ -48,7 +48,8 @@ struct AuftritteTableView: View {
     @State private var sortKey: SortKey = .eventDate
     @State private var sortAscending: Bool = true
 
-    @AppStorage("auftritteTableColumnWidths.standard")
+    // v2: Spalte «Distanz» eingefügt — alter Key würde die gespeicherten Breiten verschoben zuordnen
+    @AppStorage("auftritteTableColumnWidths.standard.v2")
     private var storedWidthsStandard = ColumnWidths(values: AuftritteTableView.defaultWidthsStandard)
 
     @AppStorage("auftritteTableColumnWidths.pendenzen")
@@ -57,7 +58,7 @@ struct AuftritteTableView: View {
     @State private var dragStartWidths: [Int: CGFloat] = [:]
 
     private enum SortKey {
-        case eventDate, eventName, keynoteTheme, contactLastName, agreedFee, statusRaw, pendenzNote
+        case eventDate, eventName, keynoteTheme, contactLastName, agreedFee, distanceKm, statusRaw, pendenzNote
     }
 
     // MARK: - Spalten-Konfiguration
@@ -69,7 +70,7 @@ struct AuftritteTableView: View {
         let alignment: HorizontalAlignment
     }
 
-    private static let defaultWidthsStandard: [CGFloat] = [110, 200, 220, 240, 110, 180]
+    private static let defaultWidthsStandard: [CGFloat] = [110, 200, 220, 240, 110, 90, 180]
     private static let defaultWidthsPendenzen: [CGFloat] = [110, 220, 280, 240]
     private static let minColumnWidth: CGFloat = 60
     private static let handleWidth: CGFloat = 6
@@ -81,6 +82,7 @@ struct AuftritteTableView: View {
         .init(title: "Thema",         defaultWidth: 220, key: .keynoteTheme,    alignment: .leading),
         .init(title: "Kontaktperson", defaultWidth: 240, key: .contactLastName, alignment: .leading),
         .init(title: "Honorar",       defaultWidth: 110, key: .agreedFee,       alignment: .trailing),
+        .init(title: "Distanz",       defaultWidth: 90,  key: .distanceKm,      alignment: .trailing),
         .init(title: "Status",        defaultWidth: 180, key: .statusRaw,       alignment: .leading)
     ]
 
@@ -136,6 +138,7 @@ struct AuftritteTableView: View {
                     result = lastCompare == .orderedAscending
                 }
             case .agreedFee:        result = lhs.agreedFeeInCents < rhs.agreedFeeInCents
+            case .distanceKm:       result = (lhs.distanceKm ?? 0) < (rhs.distanceKm ?? 0)
             case .statusRaw:        result = lhs.statusRaw.localizedCompare(rhs.statusRaw) == .orderedAscending
             case .pendenzNote:      result = lhs.pendenzNote.localizedCompare(rhs.pendenzNote) == .orderedAscending
             }
@@ -263,7 +266,8 @@ struct AuftritteTableView: View {
                 cell(idx: 2) { Text(keynote.keynoteTheme).lineLimit(1) }
                 cell(idx: 3) { Text(Self.formatContact(keynote)).lineLimit(1) }
                 cell(idx: 4) { Text(Self.formatFee(keynote.agreedFee)).monospacedDigit() }
-                cell(idx: 5) {
+                cell(idx: 5) { Text(Self.formatDistance(keynote.distanceKm)).monospacedDigit() }
+                cell(idx: 6) {
                     HStack(spacing: 6) {
                         Circle().fill(keynote.status.color).frame(width: 10, height: 10)
                         Text(keynote.status.rawValue).lineLimit(1)
@@ -367,6 +371,11 @@ struct AuftritteTableView: View {
         case (true,  false): return phone
         case (true,  true):  return ""
         }
+    }
+
+    private static func formatDistance(_ km: Int?) -> String {
+        guard let km, km > 0 else { return "" }
+        return "\(km) km"
     }
 
     private static func formatFee(_ value: Decimal) -> String {

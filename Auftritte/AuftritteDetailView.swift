@@ -137,7 +137,17 @@ struct KeynoteDetailView: View {
             }
 
             TextField("Ort", text: $keynote.location)
-            
+
+            HStack {
+                Text("Distanz")
+                Spacer()
+                TextField("km", value: $keynote.distanceKm, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 80)
+                Text("km")
+            }
+
             DatePicker("Anfragedatum", selection: $keynote.requestDate, displayedComponents: .date)
         }
     }

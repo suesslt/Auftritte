@@ -49,7 +49,7 @@ extension Keynote {
             agreedFee: 4500,
             targetAudience: "Produktmanager und Entwickler",
             location: "Basel, Switzerland",
-            status: .paid,
+            status: .closed,
             requestDate: Date().addingTimeInterval(-60 * 60 * 24 * 90),
             language: "Deutsch",
             attendeeCount: 250

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datenschutz – Auftritte</title>
+    <meta name="description" content="Datenschutzerklärung für die App Auftritte von Scoreware.">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-soft: #f5f6f8;
+            --text: #1c1c1e;
+            --text-soft: #4a4a4f;
+            --text-muted: #8a8a8e;
+            --accent: #0a6cff;
+            --accent-soft: #e6efff;
+            --border: #e3e4e8;
+            --radius: 14px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1c1c1e;
+                --bg-soft: #2c2c2e;
+                --text: #f5f5f7;
+                --text-soft: #c7c7cc;
+                --text-muted: #8e8e93;
+                --accent: #4a9aff;
+                --accent-soft: #1f2f4f;
+                --border: #38383a;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Inter", system-ui, sans-serif;
+            font-size: 17px;
+            line-height: 1.7;
+            color: var(--text);
+            background: var(--bg);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            header {
+                background: rgba(28,28,30,0.85);
+            }
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .brand {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-soft);
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.15s;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+
+        .lang-link {
+            font-size: 13px;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 100px;
+        }
+
+        @media (max-width: 560px) {
+            .nav-links {
+                gap: 16px;
+            }
+            .nav-links a {
+                font-size: 14px;
+            }
+        }
+
+        /* Hero */
+        .hero {
+            padding: 72px 0 40px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(to bottom, var(--accent-soft) 0%, var(--bg) 100%);
+        }
+
+        h1 {
+            font-size: clamp(32px, 5vw, 44px);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .meta {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Content */
+        main {
+            padding: 56px 0 80px;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin: 48px 0 14px;
+            color: var(--text);
+        }
+
+        h2:first-child {
+            margin-top: 0;
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 28px 0 8px;
+            color: var(--text);
+        }
+
+        p {
+            margin-bottom: 14px;
+            color: var(--text-soft);
+        }
+
+        ul {
+            margin: 0 0 14px 20px;
+            color: var(--text-soft);
+        }
+
+        ul li {
+            margin-bottom: 6px;
+        }
+
+        strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .notice {
+            background: var(--bg-soft);
+            border-left: 4px solid var(--accent);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+            color: var(--text-soft);
+        }
+
+        .notice strong {
+            color: var(--text);
+        }
+
+        .toc {
+            background: var(--bg-soft);
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            margin-bottom: 48px;
+            border: 1px solid var(--border);
+        }
+
+        .toc h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .toc ol {
+            margin: 0 0 0 20px;
+            color: var(--text-soft);
+        }
+
+        .toc ol li {
+            margin-bottom: 4px;
+        }
+
+        .toc a {
+            color: var(--text-soft);
+        }
+
+        .toc a:hover {
+            color: var(--accent);
+        }
+
+        footer {
+            padding: 32px 0 56px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="nav">
+            <a href="index.html" class="brand">Auftritte</a>
+            <nav class="nav-links">
+                <a href="index.html#nutzen">Nutzen</a>
+                <a href="index.html#support">Support</a>
+                <a href="datenschutz.html">Datenschutz</a>
+                <a href="datenschutz_en.html" class="lang-link">English</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Datenschutzerklärung</h1>
+            <p class="meta">Für die App <strong>Auftritte</strong> · Stand: 23. Mai 2026</p>
+        </div>
+    </section>
+
+    <main>
+        <div class="container">
+
+            <div class="notice">
+                <strong>Kurzfassung:</strong> Auftritte ist eine reine On-Device-App. Wir, der Anbieter Scoreware, erheben, speichern oder verarbeiten <strong>keinerlei personenbezogene Daten</strong> auf eigenen Servern. Alle Ihre Daten verbleiben auf Ihrem Gerät bzw. in Ihrer eigenen iCloud-Bibliothek.
+            </div>
+
+            <div class="toc">
+                <h2>Inhalt</h2>
+                <ol>
+                    <li><a href="#verantwortlich">Verantwortlicher</a></li>
+                    <li><a href="#daten">Welche Daten verarbeitet werden</a></li>
+                    <li><a href="#icloud">iCloud-Synchronisation</a></li>
+                    <li><a href="#berechtigungen">Geräte-Berechtigungen</a></li>
+                    <li><a href="#dritte">Weitergabe an Dritte</a></li>
+                    <li><a href="#tracking">Tracking und Analytics</a></li>
+                    <li><a href="#export">Datenexport und -import</a></li>
+                    <li><a href="#loeschen">Daten löschen</a></li>
+                    <li><a href="#rechte">Ihre Rechte (DSGVO)</a></li>
+                    <li><a href="#kinder">Schutz von Kindern</a></li>
+                    <li><a href="#aenderungen">Änderungen dieser Erklärung</a></li>
+                    <li><a href="#kontakt">Kontakt</a></li>
+                </ol>
+            </div>
+
+            <h2 id="verantwortlich">1. Verantwortlicher</h2>
+            <p>Verantwortlich für die Datenverarbeitung im Zusammenhang mit der App Auftritte ist:</p>
+            <p>
+                <strong>Scoreware</strong><br>
+                E-Mail: <a href="mailto:support@scoreware.com">support@scoreware.com</a>
+            </p>
+
+            <h2 id="daten">2. Welche Daten verarbeitet werden</h2>
+            <p>Auftritte ist eine Verwaltungs-App für Vortrags- und Auftritts-Engagements. Alle Daten, die Sie in der App eingeben, werden ausschliesslich <strong>lokal auf Ihrem Gerät</strong> in der nativen Datenbank von Apple (SwiftData) gespeichert.</p>
+
+            <p>Folgende Informationen können Sie in der App eintragen oder importieren:</p>
+            <ul>
+                <li>Eckdaten des Auftritts (Bezeichnung, Datum, Ort, Titel, Thema, Sprache, Dauer, Honorar, Status)</li>
+                <li>Kontaktdaten der Auftraggeberin oder des Auftraggebers (Vorname, Name, E-Mail, Telefonnummer, Organisation)</li>
+                <li>Pendenzen, Notizen und Anfragedatum</li>
+                <li>Anzahl erwarteter Zuhörerinnen und Zuhörer</li>
+            </ul>
+
+            <p><strong>Wir, der Anbieter, haben keinen Zugriff auf diese Daten.</strong> Es findet keine Übertragung an Server von Scoreware statt. Es gibt kein Benutzerkonto, keine Anmeldung und keine Registrierung.</p>
+
+            <h2 id="icloud">3. iCloud-Synchronisation</h2>
+            <p>Sofern Sie auf Ihrem Apple-Gerät mit einer Apple ID angemeldet sind und iCloud sowie iCloud Drive aktiviert haben, werden Ihre in der App eingetragenen Daten <strong>automatisch über iCloud</strong> zwischen Ihren Geräten synchronisiert (z. B. iPhone, iPad und Mac).</p>
+
+            <p>Diese Synchronisation erfolgt direkt zwischen Ihrem Gerät und dem iCloud-Speicher Ihres Apple-Kontos. Die Daten werden in einer privaten iCloud-Datenbank Ihres Apple-Kontos abgelegt – Scoreware hat <strong>keinen Zugriff</strong> auf diese Daten.</p>
+
+            <p>Datenschutzbestimmungen für iCloud finden Sie unter <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener">apple.com/legal/privacy</a>.</p>
+
+            <p>Sie können die Synchronisation jederzeit in den Einstellungen Ihres Geräts unter <em>Apple-ID → iCloud → Auftritte</em> deaktivieren.</p>
+
+            <h2 id="berechtigungen">4. Geräte-Berechtigungen</h2>
+            <p>Die App fragt – nur bei tatsächlichem Bedarf – um Zugriff auf zwei Systemfunktionen Ihres Geräts. Die Zugriffe erfolgen <strong>vollständig lokal</strong>; es werden keine Daten an Scoreware oder Dritte übertragen.</p>
+
+            <h3>Kontakte</h3>
+            <p>Wenn Sie die Funktion <em>„Aus Kontakten übernehmen"</em> benutzen, wird einmalig die ausgewählte Kontaktperson aus dem Adressbuch Ihres Geräts (Vorname, Name, E-Mail, Telefonnummer) in den entsprechenden Auftritt übertragen. Es findet kein laufender Abgleich statt. Sie können die Berechtigung jederzeit in den Einstellungen Ihres Geräts entziehen.</p>
+
+            <h3>Kalender</h3>
+            <p>Sie können einen Auftritt optional als Termin in den Kalender Ihres Geräts übertragen. Dazu greift die App auf die Kalender-Datenbank des Betriebssystems zu (EventKit). Auch hier verbleibt der Eintrag ausschliesslich in Ihrem persönlichen Kalender; ein Datentransfer zu Scoreware findet nicht statt.</p>
+
+            <h2 id="dritte">5. Weitergabe an Dritte</h2>
+            <p>Eine Weitergabe Ihrer Daten an Dritte findet <strong>nicht statt</strong>. Insbesondere werden Ihre Daten:</p>
+            <ul>
+                <li>nicht an Werbenetzwerke übermittelt,</li>
+                <li>nicht an Analyse-Dienstleister übertragen,</li>
+                <li>nicht für Werbezwecke ausgewertet,</li>
+                <li>nicht verkauft, vermietet oder anderweitig kommerziell genutzt.</li>
+            </ul>
+
+            <h2 id="tracking">6. Tracking und Analytics</h2>
+            <p>Die App enthält <strong>kein Tracking, keine Analytics-SDKs und keine Werbeidentifier</strong>. Es werden keine Nutzungsstatistiken, Crash-Reports oder Telemetrie-Daten an Scoreware übermittelt.</p>
+
+            <p>Sofern Sie in den Einstellungen Ihres Apple-Geräts der Übermittlung anonymer Diagnose- und Nutzungsdaten an Apple zugestimmt haben, kann Apple solche Daten geräteseitig erheben. Diese Daten unterliegen den Datenschutzbestimmungen von Apple und stehen Scoreware nicht zur Verfügung.</p>
+
+            <h2 id="export">7. Datenexport und -import</h2>
+            <p>Die App bietet die folgenden Funktionen, mit denen Sie selbst aktiv Daten zwischen der App und anderen Programmen austauschen:</p>
+            <ul>
+                <li><strong>CSV-Export:</strong> Erstellt eine Datei mit Ihren Auftritts-Daten, die Sie weiterverwenden können (z. B. in Numbers, Excel oder einem Buchhaltungsprogramm).</li>
+                <li><strong>CSV-Import:</strong> Liest eine zuvor exportierte oder selbst erstellte CSV-Datei in die App ein.</li>
+                <li><strong>PDF-Export:</strong> Erstellt eine druckfähige Übersicht aller Auftritte.</li>
+            </ul>
+            <p>Die Verwendung dieser Funktionen erfolgt ausschliesslich auf Ihre Veranlassung. Die Dateien werden lokal auf Ihrem Gerät erstellt; was Sie anschliessend damit machen (Versand per E-Mail, AirDrop, Cloud-Speicher etc.), liegt vollständig in Ihrer Verantwortung.</p>
+
+            <h2 id="loeschen">8. Daten löschen</h2>
+            <p>Sie haben jederzeit die volle Kontrolle über Ihre Daten:</p>
+            <ul>
+                <li><strong>Einzelne Auftritte</strong> können Sie über Wischgesten oder das Kontextmenü in der Liste löschen.</li>
+                <li><strong>Alle Auftritte gleichzeitig</strong> können Sie über das Menü <em>„Mehr → Alle Auftritte löschen"</em> entfernen. Die Aktion ist durch eine Tipp-Bestätigung gegen versehentliches Auslösen geschützt.</li>
+                <li><strong>Die gesamte App-Datenbank</strong> wird vollständig entfernt, wenn Sie die App von Ihrem Gerät deinstallieren. Wenn Sie iCloud-Sync aktiviert haben, werden die Daten beim nächsten Sync auch von Ihren weiteren Geräten entfernt.</li>
+            </ul>
+
+            <h2 id="rechte">9. Ihre Rechte (DSGVO)</h2>
+            <p>Da Scoreware selbst keine personenbezogenen Daten von Ihnen verarbeitet, lassen sich Ansprüche auf <em>Auskunft</em>, <em>Berichtigung</em>, <em>Löschung</em>, <em>Einschränkung der Verarbeitung</em>, <em>Datenübertragbarkeit</em> oder <em>Widerspruch</em> gegen uns inhaltlich nicht erfüllen – wir haben Ihre Daten schlicht nicht.</p>
+
+            <p>Sie können Ihre eigenen Daten innerhalb der App jederzeit einsehen (alle Felder sind editierbar), korrigieren, exportieren und löschen (siehe Abschnitt 7 und 8).</p>
+
+            <p>Für Daten, die Apple im Rahmen Ihres iCloud-Kontos verarbeitet, wenden Sie sich bitte direkt an Apple: <a href="https://privacy.apple.com" target="_blank" rel="noopener">privacy.apple.com</a>.</p>
+
+            <h2 id="kinder">10. Schutz von Kindern</h2>
+            <p>Die App richtet sich an erwachsene Berufstätige. Wir erheben wissentlich keine Daten von Kindern unter 16 Jahren. Da überhaupt keine Datenerhebung auf Anbieterseite stattfindet, ergibt sich diese Frage faktisch nicht.</p>
+
+            <h2 id="aenderungen">11. Änderungen dieser Erklärung</h2>
+            <p>Wir behalten uns vor, diese Datenschutzerklärung anzupassen, falls sich die rechtlichen Rahmenbedingungen oder der Funktionsumfang der App ändern. Die jeweils aktuelle Fassung ist unter dieser Adresse abrufbar; das Datum am Seitenanfang weist die letzte Aktualisierung aus.</p>
+
+            <h2 id="kontakt">12. Kontakt</h2>
+            <p>Für Fragen zum Datenschutz oder zur Verarbeitung Ihrer Daten erreichen Sie uns per E-Mail:</p>
+            <p>
+                <a href="mailto:support@scoreware.com?subject=Datenschutz%20Auftritte"><strong>support@scoreware.com</strong></a>
+            </p>
+            <p>Bitte beschreiben Sie Ihr Anliegen so präzise wie möglich, damit wir Ihnen schnell und sachgerecht antworten können.</p>
+
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 Scoreware. Alle Rechte vorbehalten.</p>
+            <p>Auftritte – Auftrittsverwaltung für Keynote-Speaker.</p>
+        </div>
+    </footer>
+</body>
+</html>

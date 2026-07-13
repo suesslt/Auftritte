@@ -61,13 +61,6 @@ struct KeynoteStatsView: View {
                     icon: "clock.badge.exclamationmark.fill",
                     color: .orange
                 )
-                
-                StatRow(
-                    title: "Bezahlt",
-                    value: formatCurrency(stats.paidFees),
-                    icon: "checkmark.circle.fill",
-                    color: .mint
-                )
             }
             
             Section("Status Verteilung") {
@@ -163,12 +156,6 @@ struct KeynoteStatistics {
         }.reduce(0) { $0 + $1.agreedFee }
     }
 
-    var paidFees: Decimal {
-        keynotes.filter { keynote in
-            keynote.status == .paid || keynote.status == .closed
-        }.reduce(0) { $0 + $1.agreedFee }
-    }
-    
     var statusDistribution: [(status: KeynoteStatus, count: Int)] {
         let grouped = Dictionary(grouping: keynotes, by: { $0.status })
         return grouped.map { (status: $0.key, count: $0.value.count) }

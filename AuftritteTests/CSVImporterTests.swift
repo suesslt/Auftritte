@@ -92,8 +92,8 @@ struct CSVImporterTests {
 
     @Test func importer_parses_all_new_fields() async throws {
         let csv = """
-        eventName,eventDate,pendenzRaw,pendenzNote,pendenzErledigt,inAbklaerung\r
-        Test,2026-09-15T10:00:00Z,Speaker,Folien vorbereiten,true,false\r
+        eventName,eventDate,pendenzRaw,pendenzNote,pendenzErledigt,inAbklaerung,distanceKm\r
+        Test,2026-09-15T10:00:00Z,Speaker,Folien vorbereiten,true,false,87\r
         """
         let result = try await KeynoteCSVImporter().parse(csv)
         let keynote = try #require(result.rows[0].keynote)
@@ -101,11 +101,42 @@ struct CSVImporterTests {
         #expect(keynote.pendenzNote == "Folien vorbereiten")
         #expect(keynote.pendenzErledigt == true)
         #expect(keynote.inAbklaerung == false)
+        #expect(keynote.distanceKm == 87)
+    }
+
+    @Test func importer_empty_distanceKm_yields_nil() async throws {
+        let csv = """
+        eventName,eventDate,distanceKm\r
+        Test,2026-09-15T10:00:00Z,\r
+        """
+        let result = try await KeynoteCSVImporter().parse(csv)
+        let keynote = try #require(result.rows[0].keynote)
+        #expect(keynote.distanceKm == nil)
     }
 
     @Test func mappedStatusRaw_passes_through_known_values() {
-        #expect(KeynoteCSVImporter.mappedStatusRaw("Bezahlt") == "Bezahlt")
         #expect(KeynoteCSVImporter.mappedStatusRaw("Angefragt") == "Angefragt")
+        #expect(KeynoteCSVImporter.mappedStatusRaw("Abgebrochen") == "Abgebrochen")
         #expect(KeynoteCSVImporter.mappedStatusRaw("") == "")
+    }
+
+    @Test func importer_migrates_legacy_status_paid() async throws {
+        let csv = """
+        eventName,eventDate,statusRaw\r
+        Test,2026-09-15T10:00:00Z,Bezahlt\r
+        """
+        let result = try await KeynoteCSVImporter().parse(csv)
+        let keynote = try #require(result.rows[0].keynote)
+        #expect(keynote.status == .closed)
+    }
+
+    @Test func importer_migrates_legacy_status_cancelled() async throws {
+        let csv = """
+        eventName,eventDate,statusRaw\r
+        Test,2026-09-15T10:00:00Z,Abgesagt\r
+        """
+        let result = try await KeynoteCSVImporter().parse(csv)
+        let keynote = try #require(result.rows[0].keynote)
+        #expect(keynote.status == .cancelled)
     }
 }

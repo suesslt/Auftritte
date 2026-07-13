@@ -35,7 +35,8 @@ struct CSVRoundTripTests {
             pendenz: .speaker,
             pendenzNote: "Folien vorbereiten",
             pendenzErledigt: false,
-            attendeeCount: 120
+            attendeeCount: 120,
+            distanceKm: 85
         )
         original.agreedFeeInCents = 850_000
 
@@ -67,6 +68,7 @@ struct CSVRoundTripTests {
         #expect(reimported.pendenzNote == "Folien vorbereiten")
         #expect(reimported.pendenzErledigt == false)
         #expect(reimported.attendeeCount == 120)
+        #expect(reimported.distanceKm == 85)
     }
 
     @Test func roundtrip_preserves_multipart_lastname() async throws {

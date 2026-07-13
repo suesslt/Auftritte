@@ -61,6 +61,15 @@ struct KeynoteListItemView: View {
                     .font(.caption)
                     .lineLimit(1)
                 }
+
+                if let km = keynote.distanceKm, km > 0 {
+                    Label {
+                        Text("\(km) km")
+                    } icon: {
+                        Image(systemName: "car")
+                    }
+                    .font(.caption)
+                }
             }
             .foregroundStyle(.secondary)
             

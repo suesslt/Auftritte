@@ -59,7 +59,7 @@ actor KeynoteCSVImporter {
         "contactFirstName", "contactLastName", "contactFullName",
         "contactEmail", "contactPhone",
         "inAbklaerung", "pendenzRaw", "pendenzNote", "pendenzErledigt",
-        "attendeeCount"
+        "attendeeCount", "distanceKm"
     ]
 
     /// Migrations-Mapping für obsolete Status-Werte (alte CSV-Exporte).
@@ -68,6 +68,8 @@ actor KeynoteCSVImporter {
         switch raw {
         case "Durchgeführt und in Rechnung gestellt": return KeynoteStatus.completed.rawValue
         case "Feedback angefragt":                    return KeynoteStatus.closed.rawValue
+        case "Bezahlt":                               return KeynoteStatus.closed.rawValue
+        case "Abgesagt":                              return KeynoteStatus.cancelled.rawValue
         default:                                      return raw
         }
     }
@@ -199,6 +201,9 @@ actor KeynoteCSVImporter {
 
         // Anzahl Zuhörer (optional)
         keynote.attendeeCount = Int(fields["attendeeCount"] ?? "")
+
+        // Distanz in km (optional)
+        keynote.distanceKm = Int(fields["distanceKm"] ?? "")
         
         return CSVImportRow(
             lineNumber: lineNumber,

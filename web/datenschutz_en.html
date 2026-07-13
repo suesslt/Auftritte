@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy – Auftritte</title>
+    <meta name="description" content="Privacy policy for the Auftritte app by Scoreware.">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-soft: #f5f6f8;
+            --text: #1c1c1e;
+            --text-soft: #4a4a4f;
+            --text-muted: #8a8a8e;
+            --accent: #0a6cff;
+            --accent-soft: #e6efff;
+            --border: #e3e4e8;
+            --radius: 14px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1c1c1e;
+                --bg-soft: #2c2c2e;
+                --text: #f5f5f7;
+                --text-soft: #c7c7cc;
+                --text-muted: #8e8e93;
+                --accent: #4a9aff;
+                --accent-soft: #1f2f4f;
+                --border: #38383a;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Inter", system-ui, sans-serif;
+            font-size: 17px;
+            line-height: 1.7;
+            color: var(--text);
+            background: var(--bg);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            header {
+                background: rgba(28,28,30,0.85);
+            }
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .brand {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-soft);
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.15s;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+
+        .lang-link {
+            font-size: 13px;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 100px;
+        }
+
+        @media (max-width: 560px) {
+            .nav-links {
+                gap: 16px;
+            }
+            .nav-links a {
+                font-size: 14px;
+            }
+        }
+
+        /* Hero */
+        .hero {
+            padding: 72px 0 40px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(to bottom, var(--accent-soft) 0%, var(--bg) 100%);
+        }
+
+        h1 {
+            font-size: clamp(32px, 5vw, 44px);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .meta {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Content */
+        main {
+            padding: 56px 0 80px;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin: 48px 0 14px;
+            color: var(--text);
+        }
+
+        h2:first-child {
+            margin-top: 0;
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 28px 0 8px;
+            color: var(--text);
+        }
+
+        p {
+            margin-bottom: 14px;
+            color: var(--text-soft);
+        }
+
+        ul {
+            margin: 0 0 14px 20px;
+            color: var(--text-soft);
+        }
+
+        ul li {
+            margin-bottom: 6px;
+        }
+
+        strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .notice {
+            background: var(--bg-soft);
+            border-left: 4px solid var(--accent);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 20px 0;
+            color: var(--text-soft);
+        }
+
+        .notice strong {
+            color: var(--text);
+        }
+
+        .toc {
+            background: var(--bg-soft);
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            margin-bottom: 48px;
+            border: 1px solid var(--border);
+        }
+
+        .toc h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .toc ol {
+            margin: 0 0 0 20px;
+            color: var(--text-soft);
+        }
+
+        .toc ol li {
+            margin-bottom: 4px;
+        }
+
+        .toc a {
+            color: var(--text-soft);
+        }
+
+        .toc a:hover {
+            color: var(--accent);
+        }
+
+        footer {
+            padding: 32px 0 56px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="nav">
+            <a href="index_en.html" class="brand">Auftritte</a>
+            <nav class="nav-links">
+                <a href="index_en.html#benefits">Benefits</a>
+                <a href="index_en.html#support">Support</a>
+                <a href="datenschutz_en.html">Privacy</a>
+                <a href="datenschutz.html" class="lang-link">Deutsch</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Privacy Policy</h1>
+            <p class="meta">For the <strong>Auftritte</strong> app · Last updated: 23 May 2026</p>
+        </div>
+    </section>
+
+    <main>
+        <div class="container">
+
+            <div class="notice">
+                <strong>Summary:</strong> Auftritte is a strictly on-device app. We, the provider Scoreware, do <strong>not collect, store, or process any personal data</strong> on our own servers. All your data stays on your device or in your private iCloud library.
+            </div>
+
+            <div class="toc">
+                <h2>Contents</h2>
+                <ol>
+                    <li><a href="#controller">Data controller</a></li>
+                    <li><a href="#data">What data is processed</a></li>
+                    <li><a href="#icloud">iCloud synchronisation</a></li>
+                    <li><a href="#permissions">Device permissions</a></li>
+                    <li><a href="#third-parties">Disclosure to third parties</a></li>
+                    <li><a href="#tracking">Tracking and analytics</a></li>
+                    <li><a href="#export">Data export and import</a></li>
+                    <li><a href="#delete">Deleting your data</a></li>
+                    <li><a href="#rights">Your rights (GDPR)</a></li>
+                    <li><a href="#children">Children's privacy</a></li>
+                    <li><a href="#changes">Changes to this policy</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ol>
+            </div>
+
+            <h2 id="controller">1. Data controller</h2>
+            <p>The party responsible for any data processing relating to the Auftritte app is:</p>
+            <p>
+                <strong>Scoreware</strong><br>
+                Email: <a href="mailto:support@scoreware.com">support@scoreware.com</a>
+            </p>
+
+            <h2 id="data">2. What data is processed</h2>
+            <p>Auftritte is a management app for speaking engagements. All the data you enter is stored exclusively <strong>locally on your device</strong> using Apple's native database framework (SwiftData).</p>
+
+            <p>The following information can be entered or imported in the app:</p>
+            <ul>
+                <li>Engagement details (event name, date, location, title, theme, language, duration, fee, status)</li>
+                <li>Contact details of the client (first name, last name, email, phone number, organisation)</li>
+                <li>Pending tasks, notes, and the date of the original inquiry</li>
+                <li>Expected number of attendees</li>
+            </ul>
+
+            <p><strong>We, the provider, have no access to this data.</strong> No data is transmitted to any Scoreware server. There is no user account, no sign-in, and no registration.</p>
+
+            <h2 id="icloud">3. iCloud synchronisation</h2>
+            <p>If you are signed in to your Apple device with an Apple ID and have iCloud and iCloud Drive enabled, the data you enter in the app is <strong>automatically synchronised through iCloud</strong> across your devices (e.g. iPhone, iPad, and Mac).</p>
+
+            <p>This synchronisation happens directly between your device and the iCloud storage of your Apple account. The data is held in a private iCloud database tied to your Apple ID — Scoreware has <strong>no access</strong> to it.</p>
+
+            <p>Apple's privacy practices for iCloud are documented at <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener">apple.com/legal/privacy</a>.</p>
+
+            <p>You can disable synchronisation at any time in your device settings under <em>Apple ID → iCloud → Auftritte</em>.</p>
+
+            <h2 id="permissions">4. Device permissions</h2>
+            <p>The app asks for access to two system features of your device — only when there is an actual need. Access is <strong>strictly local</strong>; no data is transmitted to Scoreware or any third party.</p>
+
+            <h3>Contacts</h3>
+            <p>When you use the <em>"Import from Contacts"</em> function, the selected contact's details from your device's address book (first name, last name, email, phone number) are copied into the relevant engagement once. There is no ongoing synchronisation. You can revoke the permission at any time in your device settings.</p>
+
+            <h3>Calendar</h3>
+            <p>You can optionally push an engagement as an event to your device's calendar. To do this, the app accesses the operating system's calendar database (EventKit). The entry remains exclusively in your personal calendar; no data is transferred to Scoreware.</p>
+
+            <h2 id="third-parties">5. Disclosure to third parties</h2>
+            <p>Your data is <strong>not disclosed</strong> to any third party. In particular, your data is:</p>
+            <ul>
+                <li>not sent to any advertising network,</li>
+                <li>not transmitted to any analytics provider,</li>
+                <li>not used for advertising purposes,</li>
+                <li>not sold, rented, or otherwise commercially exploited.</li>
+            </ul>
+
+            <h2 id="tracking">6. Tracking and analytics</h2>
+            <p>The app contains <strong>no tracking, no analytics SDKs, and no advertising identifier</strong>. No usage statistics, crash reports, or telemetry data are sent to Scoreware.</p>
+
+            <p>If you have consented to the transmission of anonymous diagnostic and usage data to Apple in your device settings, Apple may collect such data on its own. That data is subject to Apple's privacy terms and is not available to Scoreware.</p>
+
+            <h2 id="export">7. Data export and import</h2>
+            <p>The app offers the following functions that allow you to actively exchange data between the app and other programs:</p>
+            <ul>
+                <li><strong>CSV export:</strong> Produces a file with your engagement data that can be reused (e.g. in Numbers, Excel, or an accounting program).</li>
+                <li><strong>CSV import:</strong> Reads a previously exported or hand-crafted CSV file into the app.</li>
+                <li><strong>PDF export:</strong> Produces a printable overview of all engagements.</li>
+            </ul>
+            <p>These functions are used exclusively at your initiative. The files are produced locally on your device; what you do with them afterwards (sending by email, AirDrop, cloud storage, and so on) is entirely your responsibility.</p>
+
+            <h2 id="delete">8. Deleting your data</h2>
+            <p>You have full control over your data at all times:</p>
+            <ul>
+                <li><strong>Individual engagements</strong> can be deleted via swipe gestures or the context menu in the list.</li>
+                <li><strong>All engagements at once</strong> can be removed via the menu <em>"More → Delete all engagements"</em>. The action is guarded by a type-to-confirm prompt to prevent accidental triggering.</li>
+                <li><strong>The entire app database</strong> is removed when you uninstall the app from your device. If iCloud sync is enabled, the data is also removed from your other devices on the next sync.</li>
+            </ul>
+
+            <h2 id="rights">9. Your rights (GDPR)</h2>
+            <p>Since Scoreware itself does not process any personal data about you, any claims for <em>access</em>, <em>rectification</em>, <em>erasure</em>, <em>restriction of processing</em>, <em>data portability</em>, or <em>objection</em> directed at us cannot be acted upon substantively — we simply do not hold your data.</p>
+
+            <p>You can view, edit, export, and delete your own data inside the app at any time (see sections 7 and 8).</p>
+
+            <p>For data Apple processes as part of your iCloud account, please reach out directly to Apple: <a href="https://privacy.apple.com" target="_blank" rel="noopener">privacy.apple.com</a>.</p>
+
+            <h2 id="children">10. Children's privacy</h2>
+            <p>The app is aimed at working adults. We do not knowingly collect data from children under 16. Since no data is collected on the provider side at all, the question does not arise in practice.</p>
+
+            <h2 id="changes">11. Changes to this policy</h2>
+            <p>We reserve the right to adapt this privacy policy if the legal framework or the scope of the app changes. The current version is always available at this address; the date at the top of the page reflects the latest update.</p>
+
+            <h2 id="contact">12. Contact</h2>
+            <p>For questions about privacy or the processing of your data, contact us by email:</p>
+            <p>
+                <a href="mailto:support@scoreware.com?subject=Auftritte%20Privacy"><strong>support@scoreware.com</strong></a>
+            </p>
+            <p>Please describe your request as precisely as possible so we can respond promptly and appropriately.</p>
+
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 Scoreware. All rights reserved.</p>
+            <p>Auftritte – engagement management for keynote speakers.</p>
+        </div>
+    </footer>
+</body>
+</html>

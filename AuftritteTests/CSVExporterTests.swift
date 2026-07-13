@@ -58,9 +58,24 @@ struct CSVExporterTests {
     @Test func exporter_attendeeCount_nil_yields_empty() async throws {
         let keynote = Keynote(eventName: "Test", eventDate: Date(), attendeeCount: nil)
         let csv = await KeynoteCSVExporter().buildCSV([keynote])
-        // Letzte Spalte: attendeeCount → die Zeile endet mit Komma + leerem Feld
+        // Letzte Spalten: attendeeCount + distanceKm → die Zeile endet mit zwei leeren Feldern
+        let dataLine = csv.split(separator: "\r\n").last.map(String.init) ?? ""
+        #expect(dataLine.hasSuffix(",,"))
+    }
+
+    @Test func exporter_distanceKm_nil_yields_empty() async throws {
+        let keynote = Keynote(eventName: "Test", eventDate: Date(), distanceKm: nil)
+        let csv = await KeynoteCSVExporter().buildCSV([keynote])
+        // Letzte Spalte: distanceKm → die Zeile endet mit Komma + leerem Feld
         let dataLine = csv.split(separator: "\r\n").last.map(String.init) ?? ""
         #expect(dataLine.hasSuffix(","))
+    }
+
+    @Test func exporter_distanceKm_writes_value_as_last_column() async throws {
+        let keynote = Keynote(eventName: "Test", eventDate: Date(), distanceKm: 87)
+        let csv = await KeynoteCSVExporter().buildCSV([keynote])
+        let dataLine = csv.split(separator: "\r\n").last.map(String.init) ?? ""
+        #expect(dataLine.hasSuffix(",87"))
     }
 
     @Test func exporter_writes_firstname_and_lastname() async throws {

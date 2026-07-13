@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var showingCSVImport = false
     @State private var showingCSVExport = false
     @State private var showingDeleteAllConfirmation = false
+    @State private var showingSettings = false
     @State private var viewMode: ViewMode = .list
     @StateObject private var calendarService = CalendarService()
     @StateObject private var errorHandler = ErrorHandler()
@@ -126,6 +127,9 @@ struct ContentView: View {
                                 }
                         }
                     }
+                    .sheet(isPresented: $showingSettings) {
+                        SettingsView()
+                    }
                     .sheet(isPresented: $showingCSVImport) {
                         CSVImportView()
                     }
@@ -208,7 +212,10 @@ struct ContentView: View {
                     Label("Statistiken", systemImage: "chart.bar.fill")
                 }
                 Button(action: { exportPDF() }) {
-                    Label("PDF exportieren", systemImage: "doc.fill")
+                    Label("Statistik Report", systemImage: "doc.fill")
+                }
+                Button(action: { exportFahrtenPDF() }) {
+                    Label("Steuerabzüge Fahrten", systemImage: "car.fill")
                 }
                 Divider()
                 Button(action: { showingCSVImport = true }) {
@@ -216,6 +223,10 @@ struct ContentView: View {
                 }
                 Button(action: { showingCSVExport = true }) {
                     Label("CSV exportieren", systemImage: "square.and.arrow.up.on.square")
+                }
+                Divider()
+                Button(action: { showingSettings = true }) {
+                    Label("Einstellungen", systemImage: "gearshape")
                 }
                 Divider()
                 Button(role: .destructive) {
@@ -382,6 +393,16 @@ struct ContentView: View {
             title: "Auftrittsübersicht"
         )
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("Auftrittsübersicht.pdf")
+        try? pdfData.write(to: tempURL)
+        pdfURL = tempURL
+    }
+
+    private func exportFahrtenPDF() {
+        let pdfData = FahrtenPDFGenerator.generatePDF(
+            keynotes: Array(keynotes),
+            kilometerpreisCHF: AppSettings.kilometerpreis
+        )
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("Steuerabzüge Fahrten.pdf")
         try? pdfData.write(to: tempURL)
         pdfURL = tempURL
     }

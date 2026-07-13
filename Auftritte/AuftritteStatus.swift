@@ -72,7 +72,6 @@ enum KeynoteStatus: String, Codable, CaseIterable, Identifiable {
     case contractSigned = "Vertrag erstellt und Zustande gekommen"
     case completed = "Durchgeführt"
     case invoiced = "Rechnung gestellt"
-    case paid = "Bezahlt"
     case closed = "Abgeschlossen"
     case cancelled = "Abgebrochen"
 
@@ -93,9 +92,7 @@ enum KeynoteStatus: String, Codable, CaseIterable, Identifiable {
         case .completed:
             return [.invoiced, .cancelled]
         case .invoiced:
-            return [.paid, .cancelled]
-        case .paid:
-            return [.closed]
+            return [.closed, .cancelled]
         case .closed, .cancelled:
             return []
         }
@@ -117,8 +114,6 @@ enum KeynoteStatus: String, Codable, CaseIterable, Identifiable {
             return .yellow
         case .invoiced:
             return .orange
-        case .paid:
-            return .purple
         case .closed:
             return .gray
         case .cancelled:

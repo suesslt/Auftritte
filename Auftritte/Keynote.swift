@@ -35,7 +35,8 @@ final class Keynote {
     var pendenzNote: String = ""
     var pendenzErledigt: Bool = false
     var attendeeCount: Int?
-    
+    var distanceKm: Int? // Distanz Sursee → Auftrittsort in ganzen km
+
     // Computed properties für Kontakt-Darstellung (analog zu KeynoteContact)
     var contactDisplayName: String {
         let first = contactFirstName.trimmingCharacters(in: .whitespaces)
@@ -95,7 +96,7 @@ final class Keynote {
 
     // Computed property für Section-Zuordnung
     var section: KeynoteSection {
-        let erledigtStatuses: Set<KeynoteStatus> = [.closed, .cancelled, .paid]
+        let erledigtStatuses: Set<KeynoteStatus> = [.closed, .cancelled]
         if erledigtStatuses.contains(status) {
             return .erledigt
         }
@@ -156,7 +157,8 @@ final class Keynote {
         pendenz: Pendenz = .speaker,
         pendenzNote: String = "",
         pendenzErledigt: Bool = false,
-        attendeeCount: Int? = nil
+        attendeeCount: Int? = nil,
+        distanceKm: Int? = nil
     ) {
         self.eventName = eventName
         self.eventDate = eventDate
@@ -188,5 +190,6 @@ final class Keynote {
         self.pendenzNote = pendenzNote
         self.pendenzErledigt = pendenzErledigt
         self.attendeeCount = attendeeCount
+        self.distanceKm = distanceKm
     }
 }
