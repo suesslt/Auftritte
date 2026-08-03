@@ -31,6 +31,9 @@ struct KeynotesApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                // Datumseingabe und SwiftUI-Datumsanzeige fix in der Heimatzeitzone,
+                // damit Termine auf Reisen nicht verschoben erscheinen.
+                .environment(\.timeZone, .home)
                 .task {
                     runContactNameMigration()
                     runStatusMigration()

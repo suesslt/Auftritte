@@ -65,7 +65,7 @@ final class FahrtenPDFGenerator {
 
     /// Quartal 1–4 aus dem Monat, ohne Foundation-`.quarter` (unzuverlässig).
     nonisolated static func yearAndQuarter(of date: Date) -> (year: Int, quarter: Int) {
-        let comps = Calendar.current.dateComponents([.year, .month], from: date)
+        let comps = Calendar.home.dateComponents([.year, .month], from: date)
         return (comps.year ?? 0, ((comps.month ?? 1) - 1) / 3 + 1)
     }
 
@@ -224,6 +224,7 @@ final class FahrtenPDFGenerator {
         formatter.dateStyle = .long
         formatter.timeStyle = .none
         formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = .home
         let preisString = chfFormatter.string(from: kilometerpreis as NSDecimalNumber) ?? "CHF \(kilometerpreis)"
         let subtitle = "\(tripCount) Fahrten • Kilometerpreis \(preisString)/km • Erstellt am \(formatter.string(from: generationDate))"
         let subtitleAttrs: [NSAttributedString.Key: Any] = [
@@ -371,6 +372,7 @@ final class FahrtenPDFGenerator {
         let f = DateFormatter()
         f.dateFormat = "dd.MM.yyyy"
         f.locale = Locale(identifier: "de_CH")
+        f.timeZone = .home
         return f
     }()
 

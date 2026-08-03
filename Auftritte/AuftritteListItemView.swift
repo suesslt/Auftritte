@@ -45,7 +45,7 @@ struct KeynoteListItemView: View {
             HStack(spacing: 8) {
                 if !keynote.inAbklaerung {
                     Label {
-                        Text(keynote.eventDate.formatted(date: .abbreviated, time: .shortened))
+                        Text(keynote.eventDate.homeFormatted(date: .abbreviated, time: .shortened))
                     } icon: {
                         Image(systemName: "calendar")
                     }

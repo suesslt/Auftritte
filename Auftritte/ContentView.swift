@@ -25,6 +25,7 @@ struct ContentView: View {
     @State private var showingCSVExport = false
     @State private var showingDeleteAllConfirmation = false
     @State private var showingSettings = false
+    @State private var showingKalenderAbgleich = false
     @State private var viewMode: ViewMode = .list
     @StateObject private var calendarService = CalendarService()
     @StateObject private var errorHandler = ErrorHandler()
@@ -133,6 +134,9 @@ struct ContentView: View {
                     .sheet(isPresented: $showingCSVImport) {
                         CSVImportView()
                     }
+                    .sheet(isPresented: $showingKalenderAbgleich) {
+                        CalendarReconciliationView(calendarService: calendarService)
+                    }
                     .sheet(isPresented: $showingCSVExport) {
                         CSVExportView(keynotes: filteredKeynotes)
                     }
@@ -223,6 +227,10 @@ struct ContentView: View {
                 }
                 Button(action: { showingCSVExport = true }) {
                     Label("CSV exportieren", systemImage: "square.and.arrow.up.on.square")
+                }
+                Divider()
+                Button(action: { showingKalenderAbgleich = true }) {
+                    Label("Abgleich mit Kalender", systemImage: "arrow.triangle.2.circlepath")
                 }
                 Divider()
                 Button(action: { showingSettings = true }) {

@@ -128,6 +128,7 @@ actor KeynoteCSVExporter {
     private func fileTimestamp() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HHmm"
+        formatter.timeZone = .home
         return formatter.string(from: Date())
     }
 

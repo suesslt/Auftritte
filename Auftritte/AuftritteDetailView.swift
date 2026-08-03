@@ -291,6 +291,7 @@ struct KeynoteDetailView: View {
             availabilityEvents = events.map { event in
                 let formatter = DateFormatter()
                 formatter.timeStyle = .short
+                formatter.timeZone = .home
                 let timeString = formatter.string(from: event.startDate)
                 return "\(timeString): \(event.title ?? "Unbekannt")"
             }

@@ -348,7 +348,7 @@ struct AuftritteTableView: View {
         if keynote.inAbklaerung {
             Text("")
         } else {
-            Text(keynote.eventDate, format: .dateTime.day().month().year())
+            Text(keynote.eventDate, format: Date.FormatStyle(timeZone: .home).day().month().year())
         }
     }
 

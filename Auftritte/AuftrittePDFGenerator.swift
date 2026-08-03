@@ -127,6 +127,7 @@ class KeynotePDFGenerator {
         formatter.dateStyle = .long
         formatter.timeStyle = .none
         formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = .home
         let subtitle = "\(totalKeynotes) Auftritte • Erstellt am \(formatter.string(from: generationDate))"
         let subtitleAttrs: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 11, weight: .regular),
@@ -209,9 +210,11 @@ class KeynotePDFGenerator {
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .short
         dateFormatter.locale = Locale(identifier: "de_DE")
+        dateFormatter.timeZone = .home
         let dayFormatter = DateFormatter()
         dayFormatter.dateStyle = .medium
         dayFormatter.locale = Locale(identifier: "de_DE")
+        dayFormatter.timeZone = .home
 
         // Attribute
         let headerAttrs: [NSAttributedString.Key: Any] = [

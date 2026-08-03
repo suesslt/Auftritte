@@ -127,9 +127,9 @@ struct KeynoteStatistics {
     }
     
     var keynotesThisYear: Int {
-        let currentYear = Calendar.current.component(.year, from: Date())
+        let currentYear = Calendar.home.component(.year, from: Date())
         return keynotes.filter { keynote in
-            Calendar.current.component(.year, from: keynote.eventDate) == currentYear
+            Calendar.home.component(.year, from: keynote.eventDate) == currentYear
         }.count
     }
     

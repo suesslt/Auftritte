@@ -355,7 +355,7 @@ struct CSVImportView: View {
                         )
                         let isDuplicate = existingKeynotes?.contains { existing in
                             existing.eventName == keynote.eventName &&
-                            Calendar.current.isDate(existing.eventDate, equalTo: keynote.eventDate, toGranularity: .minute)
+                            Calendar.home.isDate(existing.eventDate, equalTo: keynote.eventDate, toGranularity: .minute)
                         } ?? false
                         
                         if isDuplicate { continue }
@@ -416,7 +416,7 @@ private struct ImportRowView: View {
                         .foregroundStyle(.red)
                 } else if let keynote = row.keynote {
                     HStack(spacing: 8) {
-                        Text(keynote.eventDate.formatted(date: .abbreviated, time: .omitted))
+                        Text(keynote.eventDate.homeFormatted(date: .abbreviated, time: .omitted))
                         
                         if !keynote.clientOrganization.isEmpty {
                             Text("·")

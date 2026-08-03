@@ -18,6 +18,29 @@ class CalendarService: ObservableObject {
         self.authorizationStatus = EKEventStore.authorizationStatus(for: .event)
     }
     
+    /// In den Einstellungen gewählter Kalender; Fallback auf den Standardkalender,
+    /// falls nicht konfiguriert oder der Kalender inzwischen gelöscht wurde.
+    var targetCalendar: EKCalendar? {
+        if let id = AppSettings.kalenderID, let calendar = eventStore.calendar(withIdentifier: id) {
+            return calendar
+        }
+        return eventStore.defaultCalendarForNewEvents
+    }
+
+    /// Beschreibbare Kalender für die Auswahl in den Einstellungen.
+    func writableCalendars() -> [EKCalendar] {
+        eventStore.calendars(for: .event)
+            .filter { $0.allowsContentModifications }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    }
+
+    /// Alle Events des Zielkalenders im Zeitraum (wiederkehrende Events als einzelne Occurrences).
+    func fetchReconciliationEvents(from start: Date, to end: Date) -> [EKEvent] {
+        guard let calendar = targetCalendar else { return [] }
+        let predicate = eventStore.predicateForEvents(withStart: start, end: end, calendars: [calendar])
+        return eventStore.events(matching: predicate)
+    }
+
     func requestAccess() async -> Bool {
         do {
             let granted = try await eventStore.requestFullAccessToEvents()
@@ -37,6 +60,9 @@ class CalendarService: ObservableObject {
         
         let event = EKEvent(eventStore: eventStore)
         event.title = "SAVE THE DATE: \(keynote.keynoteTitle)"
+        // Events in der Heimatzeitzone verankern, damit sie auch bei Erstellung
+        // auf Reisen dem Schweizer Auftrittstermin entsprechen.
+        event.timeZone = .home
         event.startDate = keynote.eventDate
         event.endDate = keynote.eventDate.addingTimeInterval(keynote.duration * 60)
         event.location = keynote.location
@@ -46,7 +72,7 @@ class CalendarService: ObservableObject {
         Auftraggeber: \(keynote.clientOrganization)
         Honorar: \(keynote.agreedFee) CHF
         """
-        event.calendar = eventStore.defaultCalendarForNewEvents
+        event.calendar = targetCalendar
         
         try eventStore.save(event, span: .thisEvent)
         
@@ -59,6 +85,7 @@ class CalendarService: ObservableObject {
         }
         
         event.title = "SAVE THE DATE: \(keynote.keynoteTitle)"
+        event.timeZone = .home
         event.startDate = keynote.eventDate
         event.endDate = keynote.eventDate.addingTimeInterval(keynote.duration * 60)
         event.location = keynote.location
@@ -68,7 +95,7 @@ class CalendarService: ObservableObject {
         Auftraggeber: \(keynote.clientOrganization)
         Honorar: \(keynote.agreedFee) CHF
         """
-        
+
         try eventStore.save(event, span: .thisEvent)
     }
     
@@ -81,8 +108,8 @@ class CalendarService: ObservableObject {
     }
     
     func checkAvailability(for date: Date, duration: TimeInterval, excludingEventID: String? = nil) -> [EKEvent] {
-        let startDate = Calendar.current.startOfDay(for: date)
-        let endDate = Calendar.current.date(byAdding: .day, value: 1, to: startDate)!
+        let startDate = Calendar.home.startOfDay(for: date)
+        let endDate = Calendar.home.date(byAdding: .day, value: 1, to: startDate)!
         
         let predicate = eventStore.predicateForEvents(withStart: startDate, end: endDate, calendars: nil)
         let events = eventStore.events(matching: predicate)
