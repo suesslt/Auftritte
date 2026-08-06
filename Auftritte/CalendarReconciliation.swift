@@ -15,6 +15,7 @@
 import Score
 import Foundation
 import EventKit
+import SwiftData
 
 // MARK: - Event-Snapshot
 
@@ -96,12 +97,17 @@ enum ReconciliationEngine {
     static func reconcile(keynotes: [Keynote], events: [ReconciliationEvent], now: Date = .now) -> ReconciliationResult {
         let rangeEnd = Calendar.home.date(byAdding: .year, value: horizonYears, to: now) ?? now
 
+        // Paarungs-Kandidaten: alle Auftritte mit bekanntem Datum im Zeitraum, ausser
+        // abgebrochene. Bewusst breiter als «erwartet einen Kalendereintrag»
+        // (relevantStatuses): Auch ein erst angefragter Auftritt muss sein Kalender-Event
+        // finden — sonst erschiene das Event als «nur im Kalender» und würde beim
+        // Übernehmen dupliziert.
         let candidates = keynotes
             .filter { keynote in
                 keynote.eventDate >= now &&
                 keynote.eventDate <= rangeEnd &&
                 !keynote.inAbklaerung &&
-                relevantStatuses.contains(keynote.status)
+                keynote.status != .cancelled
             }
             .sorted { $0.eventDate < $1.eventDate }
 
@@ -149,8 +155,10 @@ enum ReconciliationEngine {
 
         result.matching.sort { $0.keynote.eventDate < $1.keynote.eventDate }
         result.timeMismatch.sort { $0.keynote.eventDate < $1.keynote.eventDate }
+        // «Fehlt im Kalender» nur für Auftritte, die einen Eintrag erwarten — ein bloss
+        // angefragter Auftritt ohne Kalender-Event ist kein Befund.
         result.missingInCalendar = candidates.enumerated()
-            .filter { !pairedKeynotes.contains($0.offset) }
+            .filter { !pairedKeynotes.contains($0.offset) && relevantStatuses.contains($0.element.status) }
             .map(\.element)
         result.onlyInCalendar = events.enumerated()
             .filter { !pairedEvents.contains($0.offset) }
@@ -169,8 +177,9 @@ enum ReconciliationEngine {
         return calendar.isDate(event.start, inSameDayAs: keynote.eventDate)
     }
 
-    /// Auftritte, für die ein Kalendereintrag erwartet wird: Datum bestätigt, aber noch
-    /// nicht abgeschlossen. `requested` hat noch kein fixes Datum, `cancelled` ist raus,
+    /// Auftritte, für die ein Kalendereintrag erwartet wird («Fehlt im Kalender»):
+    /// Datum bestätigt, aber noch nicht abgeschlossen. `requested` erwartet noch keinen
+    /// Eintrag (wird aber gepaart, falls einer existiert), `cancelled` ist raus,
     /// `completed/invoiced/closed` sind erledigte Vorgänge ohne Kalender-Anspruch.
     private static let relevantStatuses: Set<KeynoteStatus> = [
         .dateConfirmedFeeOffered, .feeConfirmed, .contentAgreed, .contractSigned
@@ -203,5 +212,93 @@ enum ReconciliationEngine {
             text = String(text[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return text
+    }
+
+    // MARK: - Serientermine
+
+    /// Event-Identifier, die im Abgleichszeitraum mehrfach vorkommen — also Occurrences
+    /// eines Serientermins sind. EventKit vergibt pro Serie nur eine ID; Update/Löschen
+    /// über die ID trifft die ganze Serie und muss dafür gesperrt werden.
+    static func recurringIdentifiers(in events: [ReconciliationEvent]) -> Set<String> {
+        var counts: [String: Int] = [:]
+        for event in events {
+            counts[event.eventIdentifier, default: 0] += 1
+        }
+        return Set(counts.filter { $0.value > 1 }.keys)
+    }
+}
+
+// MARK: - Timeline-Zeilen
+
+/// Eine Zeile der Abgleichs-Zeitachse: alle vier Ergebnisgruppen chronologisch verschränkt,
+/// damit App (links) und Kalender (rechts) direkt gegenübergestellt werden können.
+enum TimelineRow: Identifiable {
+    case matched(ReconciliationResult.MatchedPair)
+    case timeMismatch(ReconciliationResult.MatchedPair)
+    case calendarOnly(ReconciliationEvent)
+    case appOnly(Keynote)
+
+    var id: String {
+        switch self {
+        case .matched(let pair): "matched|\(pair.id)"
+        case .timeMismatch(let pair): "mismatch|\(pair.id)"
+        case .calendarOnly(let event): "calendar|\(event.id)"
+        case .appOnly(let keynote): "app|\(String(describing: keynote.persistentModelID))"
+        }
+    }
+
+    /// Massgebliches Datum für die Einordnung auf der Achse;
+    /// bei abweichender Zeit das frühere der beiden Daten.
+    var sortDate: Date {
+        switch self {
+        case .matched(let pair): pair.keynote.eventDate
+        case .timeMismatch(let pair): min(pair.keynote.eventDate, pair.event.start)
+        case .calendarOnly(let event): event.start
+        case .appOnly(let keynote): keynote.eventDate
+        }
+    }
+}
+
+/// Zeilen eines Monats, für die Monats-Marker entlang der Achse.
+struct TimelineSection: Identifiable {
+    let monthStart: Date
+    let rows: [TimelineRow]
+
+    var id: Date { monthStart }
+}
+
+extension ReconciliationResult {
+    /// Alle vier Gruppen als eine chronologisch sortierte Zeilenliste;
+    /// Tie-Break über die ID, damit die Reihenfolge deterministisch bleibt.
+    var timelineRows: [TimelineRow] {
+        let rows: [TimelineRow] =
+            matching.map(TimelineRow.matched) +
+            timeMismatch.map(TimelineRow.timeMismatch) +
+            onlyInCalendar.map(TimelineRow.calendarOnly) +
+            missingInCalendar.map(TimelineRow.appOnly)
+        return rows.sorted { ($0.sortDate, $0.id) < ($1.sortDate, $1.id) }
+    }
+
+    /// Zeilen gruppiert nach Monat in der Heimatzeitzone.
+    func timelineSections(calendar: Calendar = .home) -> [TimelineSection] {
+        var sections: [TimelineSection] = []
+        var currentMonth: Date?
+        var currentRows: [TimelineRow] = []
+
+        for row in timelineRows {
+            let month = calendar.dateInterval(of: .month, for: row.sortDate)?.start ?? row.sortDate
+            if month != currentMonth {
+                if let currentMonth {
+                    sections.append(TimelineSection(monthStart: currentMonth, rows: currentRows))
+                }
+                currentMonth = month
+                currentRows = []
+            }
+            currentRows.append(row)
+        }
+        if let currentMonth {
+            sections.append(TimelineSection(monthStart: currentMonth, rows: currentRows))
+        }
+        return sections
     }
 }

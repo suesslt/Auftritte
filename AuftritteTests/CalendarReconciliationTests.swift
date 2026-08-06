@@ -213,9 +213,9 @@ struct CalendarReconciliationTests {
     @Test func filter_excludesIrrelevantKeynotes() {
         let start = date(day: 10)
         let excluded = [
-            makeKeynote(eventDate: start, status: .requested),
+            makeKeynote(eventDate: start, status: .requested),         // erwartet keinen Eintrag
             makeKeynote(eventDate: start, status: .cancelled),
-            makeKeynote(eventDate: start, status: .closed),
+            makeKeynote(eventDate: start, status: .closed),            // erwartet keinen Eintrag
             makeKeynote(eventDate: start, inAbklaerung: true),
             makeKeynote(eventDate: date(day: 10, month: 8)),           // Vergangenheit
             makeKeynote(eventDate: date(day: 10, year: 2029)),         // > 2 Jahre voraus
@@ -224,6 +224,43 @@ struct CalendarReconciliationTests {
         let result = ReconciliationEngine.reconcile(keynotes: excluded, events: [], now: now)
 
         #expect(result.isEmpty)
+    }
+
+    @Test func requestedKeynote_withSameStartEvent_pairs_notOnlyInCalendar() {
+        // Regression: Ein erst angefragter Auftritt mit bekanntem Datum muss sein
+        // Kalender-Event finden — sonst erscheint es als «nur im Kalender» und
+        // würde beim Übernehmen dupliziert.
+        let start = date(day: 10)
+        let keynote = makeKeynote(eventDate: start, status: .requested)
+        let event = makeEvent(start: start)
+
+        let result = ReconciliationEngine.reconcile(keynotes: [keynote], events: [event], now: now)
+
+        #expect(result.matching.count == 1)
+        #expect(result.onlyInCalendar.isEmpty)
+        #expect(result.missingInCalendar.isEmpty)
+    }
+
+    @Test func requestedKeynote_sameDayEvent_isTimeMismatch() {
+        let keynote = makeKeynote(eventDate: date(day: 10, hour: 18, minute: 45), status: .requested)
+        let event = makeEvent(start: date(day: 10, hour: 17))
+
+        let result = ReconciliationEngine.reconcile(keynotes: [keynote], events: [event], now: now)
+
+        #expect(result.timeMismatch.count == 1)
+        #expect(result.onlyInCalendar.isEmpty)
+    }
+
+    @Test func cancelledKeynote_neverPairs_eventStaysOnlyInCalendar() {
+        let start = date(day: 10)
+        let keynote = makeKeynote(eventDate: start, status: .cancelled)
+        let event = makeEvent(start: start)
+
+        let result = ReconciliationEngine.reconcile(keynotes: [keynote], events: [event], now: now)
+
+        #expect(result.matching.isEmpty)
+        #expect(result.onlyInCalendar.count == 1)
+        #expect(result.missingInCalendar.isEmpty)
     }
 
     @Test func unmatchedEvent_isOnlyInCalendar() {
@@ -292,5 +329,108 @@ struct CalendarReconciliationTests {
         let a = makeEvent(id: "serie-1", start: date(day: 10))
         let b = makeEvent(id: "serie-1", start: date(day: 17))
         #expect(a.id != b.id)
+    }
+
+    @Test func recurringIdentifiers_detectsSharedIDs() {
+        let events = [
+            makeEvent(id: "serie-1", start: date(day: 10)),
+            makeEvent(id: "serie-1", start: date(day: 17)),
+            makeEvent(id: "solo", start: date(day: 20)),
+        ]
+
+        #expect(ReconciliationEngine.recurringIdentifiers(in: events) == ["serie-1"])
+    }
+
+    // MARK: - Timeline
+
+    private func rowKind(_ row: TimelineRow) -> String {
+        String(row.id.prefix(while: { $0 != "|" }))
+    }
+
+    @Test func timelineRows_interleavesAllGroupsChronologically() {
+        let matchedStart = date(day: 5)
+        var result = ReconciliationResult()
+        result.matching = [.init(
+            keynote: makeKeynote(eventDate: matchedStart),
+            event: makeEvent(id: "event-1", start: matchedStart),
+            needsLink: false
+        )]
+        result.timeMismatch = [.init(
+            keynote: makeKeynote(eventDate: date(day: 10, hour: 9)),
+            event: makeEvent(id: "event-2", start: date(day: 10, hour: 17)),
+            needsLink: true
+        )]
+        result.onlyInCalendar = [makeEvent(id: "event-3", start: date(day: 15))]
+        result.missingInCalendar = [makeKeynote(eventDate: date(day: 20))]
+
+        let rows = result.timelineRows
+
+        #expect(rows.map(rowKind) == ["matched", "mismatch", "calendar", "app"])
+        #expect(rows.map(\.sortDate) == rows.map(\.sortDate).sorted())
+    }
+
+    @Test func timelineRows_mismatchSortsByEarlierOfBothDates() {
+        // Auftritt auf Mitternacht, Event am Abend: Die Mismatch-Zeile ordnet sich
+        // nach dem früheren der beiden Daten ein — vor dem 09:00-Event.
+        let keynote = makeKeynote(eventDate: date(day: 10, hour: 0))
+        var result = ReconciliationResult()
+        result.timeMismatch = [.init(
+            keynote: keynote,
+            event: makeEvent(id: "event-1", start: date(day: 10, hour: 17, minute: 30)),
+            needsLink: true
+        )]
+        result.onlyInCalendar = [makeEvent(id: "event-2", start: date(day: 10, hour: 9))]
+
+        let rows = result.timelineRows
+
+        #expect(rows.map(rowKind) == ["mismatch", "calendar"])
+        #expect(rows.first?.sortDate == keynote.eventDate)
+    }
+
+    @Test func timelineRows_idsAreUnique_forRecurringOccurrences() {
+        var result = ReconciliationResult()
+        result.matching = [.init(
+            keynote: makeKeynote(eventDate: date(day: 10)),
+            event: makeEvent(id: "serie-1", start: date(day: 10)),
+            needsLink: true
+        )]
+        result.onlyInCalendar = [makeEvent(id: "serie-1", start: date(day: 17))]
+
+        let rows = result.timelineRows
+
+        #expect(Set(rows.map(\.id)).count == rows.count)
+    }
+
+    @Test func timelineRows_stableTieBreak_sameSortDate() {
+        let start = date(day: 10)
+        var result = ReconciliationResult()
+        result.onlyInCalendar = [
+            makeEvent(id: "event-b", start: start),
+            makeEvent(id: "event-a", start: start),
+        ]
+
+        let rows = result.timelineRows
+
+        #expect(rows.count == 2)
+        if case .calendarOnly(let first) = rows[0] {
+            #expect(first.eventIdentifier == "event-a")
+        }
+        #expect(rows.map(\.id) == rows.map(\.id).sorted())
+    }
+
+    @Test func timelineSections_groupsByMonthInHomeCalendar() {
+        var result = ReconciliationResult()
+        result.onlyInCalendar = [
+            makeEvent(id: "event-1", start: date(day: 30, month: 9)),
+            makeEvent(id: "event-2", start: date(day: 1, month: 10)),
+        ]
+
+        let sections = result.timelineSections()
+
+        #expect(sections.count == 2)
+        #expect(sections.first?.monthStart == Self.homeCalendar.date(from: DateComponents(year: 2026, month: 9, day: 1)))
+        #expect(sections.last?.monthStart == Self.homeCalendar.date(from: DateComponents(year: 2026, month: 10, day: 1)))
+        #expect(sections.first?.rows.count == 1)
+        #expect(sections.last?.rows.count == 1)
     }
 }
