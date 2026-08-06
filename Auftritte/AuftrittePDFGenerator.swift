@@ -5,266 +5,164 @@
 //  PDF-Export mit 2×2-Grid pro Seite (4 Einträge), A4 Querformat.
 //  Nutzt die volle Seitenbreite — jede Zelle zeigt alle Auftritts-Informationen.
 //
+//  Seit der ScoreUI-Adoption (score v2.5.0, 2026-08-06) liefert
+//  `ReportPDFRenderer` die Infrastruktur (PDF-Lifecycle, Rect-Text mit
+//  Truncation, Formen, Report-Kopf/-Fuss); hier verbleibt das Grid-Layout.
+//
 
+import Score
+import ScoreUI
 import Foundation
 import UIKit
 import SwiftUI
 
-@MainActor
-class KeynotePDFGenerator {
+nonisolated final class KeynotePDFGenerator: ReportPDFRenderer {
 
-    // MARK: - Layout-Konstanten
+    // MARK: - Grid-Konstanten
 
-    private static let pageWidth: CGFloat = 842   // A4 quer
-    private static let pageHeight: CGFloat = 595
-    private static let pageMargin: CGFloat = 30
-    private static let headerHeight: CGFloat = 50   // Kopfzeile auf jeder Seite
-    private static let footerHeight: CGFloat = 20
     private static let gridGap: CGFloat = 12
     private static let cellPadding: CGFloat = 10
     private static let cellsPerPage: Int = 4
     private static let cellsPerRow: Int = 2
 
-    private static var contentTop: CGFloat { pageMargin + headerHeight }
-    private static var contentBottom: CGFloat { pageHeight - pageMargin - footerHeight }
-    private static var contentWidth: CGFloat { pageWidth - 2 * pageMargin }
-    private static var contentHeight: CGFloat { contentBottom - contentTop }
-
-    private static var cellWidth: CGFloat {
-        (contentWidth - gridGap) / CGFloat(cellsPerRow)
+    private var contentHeight: CGFloat { contentBottom - contentTop }
+    private var cellWidth: CGFloat {
+        (contentWidth - Self.gridGap) / CGFloat(Self.cellsPerRow)
     }
-    private static var cellHeight: CGFloat {
-        (contentHeight - gridGap) / CGFloat(cellsPerPage / cellsPerRow)
+    private var cellHeight: CGFloat {
+        (contentHeight - Self.gridGap) / CGFloat(Self.cellsPerPage / Self.cellsPerRow)
     }
 
     // MARK: - Public API
 
+    @MainActor
     static func generatePDF(
         keynotes: [Keynote],
         title: String = "Auftrittsübersicht",
         generationDate: Date = Date()
     ) -> Data {
+        KeynotePDFGenerator().render(keynotes: keynotes, title: title, generationDate: generationDate)
+    }
+
+    @MainActor
+    private func render(keynotes: [Keynote], title: String, generationDate: Date) -> Data {
         let sortedKeynotes = keynotes.sorted { $0.eventDate < $1.eventDate }
-        let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
 
-        let pdfData = NSMutableData()
-        var mediaBox = pageRect
+        guard let (context, pdfData) = beginPDF() else { return Data() }
 
-        guard let consumer = CGDataConsumer(data: pdfData as CFMutableData),
-              let pdfContext = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
-            return Data()
-        }
-
-        let totalPages = max(1, Int(ceil(Double(sortedKeynotes.count) / Double(cellsPerPage))))
+        let totalPages = max(1, Int(ceil(Double(sortedKeynotes.count) / Double(Self.cellsPerPage))))
+        let subtitleDate = Self.headerDateFormatter.string(from: generationDate)
+        let subtitle = "\(sortedKeynotes.count) Auftritte • Erstellt am \(subtitleDate)"
 
         for pageIndex in 0..<totalPages {
-            pdfContext.beginPDFPage(nil)
+            if pageIndex > 0 { newPage(context: context) }
 
-            drawPageHeader(
-                title: title,
-                pageNumber: pageIndex + 1,
-                totalPages: totalPages,
-                totalKeynotes: sortedKeynotes.count,
-                generationDate: generationDate,
-                pageRect: pageRect,
-                context: pdfContext
-            )
+            drawReportHeader(context: context, title: title, subtitle: subtitle)
 
             // Bis zu 4 Einträge dieser Seite
-            let startIndex = pageIndex * cellsPerPage
-            let endIndex = min(startIndex + cellsPerPage, sortedKeynotes.count)
+            let startIndex = pageIndex * Self.cellsPerPage
+            let endIndex = min(startIndex + Self.cellsPerPage, sortedKeynotes.count)
             for (i, globalIndex) in (startIndex..<endIndex).enumerated() {
-                let cellRect = cellRectFor(positionOnPage: i)
                 drawKeynoteCell(
                     sortedKeynotes[globalIndex],
                     index: globalIndex + 1,
-                    in: cellRect,
-                    pageRect: pageRect,
-                    context: pdfContext
+                    in: cellRectFor(positionOnPage: i),
+                    context: context
                 )
             }
 
-            drawFooter(pageNumber: pageIndex + 1, totalPages: totalPages, pageRect: pageRect, context: pdfContext)
-            pdfContext.endPDFPage()
+            drawReportFooter(context: context, pageNumber: pageIndex + 1, totalPages: totalPages)
         }
 
-        pdfContext.closePDF()
-        return pdfData as Data
+        return endPDF(context: context, pdfData: pdfData)
     }
 
     // MARK: - Layout-Hilfen
 
     /// Liefert das Rechteck einer Zelle (0…3) im 2×2-Grid.
-    private static func cellRectFor(positionOnPage i: Int) -> CGRect {
-        let row = i / cellsPerRow
-        let col = i % cellsPerRow
-        let x = pageMargin + CGFloat(col) * (cellWidth + gridGap)
-        let y = contentTop + CGFloat(row) * (cellHeight + gridGap)
+    private func cellRectFor(positionOnPage i: Int) -> CGRect {
+        let row = i / Self.cellsPerRow
+        let col = i % Self.cellsPerRow
+        let x = marginLeft + CGFloat(col) * (cellWidth + Self.gridGap)
+        let y = contentTop + CGFloat(row) * (cellHeight + Self.gridGap)
         return CGRect(x: x, y: y, width: cellWidth, height: cellHeight)
-    }
-
-    // MARK: - Drawing: Header / Footer
-
-    private static func drawPageHeader(
-        title: String,
-        pageNumber: Int,
-        totalPages: Int,
-        totalKeynotes: Int,
-        generationDate: Date,
-        pageRect: CGRect,
-        context: CGContext
-    ) {
-        // Titel links
-        let titleAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 20, weight: .bold),
-            .foregroundColor: UIColor.black
-        ]
-        let titleRect = CGRect(x: pageMargin, y: pageMargin, width: contentWidth * 0.6, height: 26)
-        drawText(title, in: titleRect, pageRect: pageRect, attributes: titleAttrs, context: context)
-
-        // Untertitel
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        formatter.timeStyle = .none
-        formatter.locale = Locale(identifier: "de_DE")
-        formatter.timeZone = .home
-        let subtitle = "\(totalKeynotes) Auftritte • Erstellt am \(formatter.string(from: generationDate))"
-        let subtitleAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 11, weight: .regular),
-            .foregroundColor: UIColor.darkGray
-        ]
-        let subtitleRect = CGRect(x: pageMargin, y: pageMargin + 28, width: contentWidth * 0.6, height: 16)
-        drawText(subtitle, in: subtitleRect, pageRect: pageRect, attributes: subtitleAttrs, context: context)
-
-        // Trennlinie unterhalb des Headers
-        context.saveGState()
-        context.setStrokeColor(UIColor.lightGray.cgColor)
-        context.setLineWidth(0.5)
-        let lineY = pageHeight - (pageMargin + headerHeight - 4)
-        context.move(to: CGPoint(x: pageMargin, y: lineY))
-        context.addLine(to: CGPoint(x: pageMargin + contentWidth, y: lineY))
-        context.strokePath()
-        context.restoreGState()
-    }
-
-    private static func drawFooter(pageNumber: Int, totalPages: Int, pageRect: CGRect, context: CGContext) {
-        let footerText = "Seite \(pageNumber) von \(totalPages)"
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 10, weight: .regular),
-            .foregroundColor: UIColor.darkGray
-        ]
-        let size = (footerText as NSString).size(withAttributes: attrs)
-        let rect = CGRect(
-            x: (pageWidth - size.width) / 2,
-            y: pageHeight - pageMargin / 2 - size.height / 2,
-            width: size.width,
-            height: size.height
-        )
-        drawText(footerText, in: rect, pageRect: pageRect, attributes: attrs, context: context)
     }
 
     // MARK: - Drawing: Einzelne Zelle
 
-    private static func drawKeynoteCell(
+    @MainActor
+    private func drawKeynoteCell(
         _ keynote: Keynote,
         index: Int,
         in cellRect: CGRect,
-        pageRect: CGRect,
         context: CGContext
     ) {
         // Hintergrund (abgerundetes Rechteck)
         let backgroundColor = index % 2 == 0
             ? UIColor(white: 0.96, alpha: 1.0)
             : UIColor.white
-        context.saveGState()
-        context.setFillColor(backgroundColor.cgColor)
-        context.setStrokeColor(UIColor(white: 0.82, alpha: 1.0).cgColor)
-        context.setLineWidth(0.5)
-        let flippedBg = flip(cellRect, in: pageRect)
-        let path = CGPath(roundedRect: flippedBg, cornerWidth: 6, cornerHeight: 6, transform: nil)
-        context.addPath(path)
-        context.drawPath(using: .fillStroke)
-        context.restoreGState()
+        fillRoundedRect(
+            context: context,
+            rect: cellRect,
+            cornerRadius: 6,
+            fillColor: backgroundColor.cgColor,
+            strokeColor: UIColor(white: 0.82, alpha: 1.0).cgColor,
+            lineWidth: 0.5
+        )
 
         // Status-Farbpunkt oben rechts
         let statusDotSize: CGFloat = 9
         let statusDotRect = CGRect(
-            x: cellRect.maxX - cellPadding - statusDotSize,
-            y: cellRect.minY + cellPadding + 3,
+            x: cellRect.maxX - Self.cellPadding - statusDotSize,
+            y: cellRect.minY + Self.cellPadding + 3,
             width: statusDotSize,
             height: statusDotSize
         )
-        let flippedDot = flip(statusDotRect, in: pageRect)
-        context.saveGState()
-        context.setFillColor(UIColor(keynote.status.color).cgColor)
-        context.fillEllipse(in: flippedDot)
-        context.restoreGState()
+        fillEllipse(context: context, rect: statusDotRect, color: UIColor(keynote.status.color).cgColor)
 
         // Text-Inhalte
-        let contentRect = cellRect.insetBy(dx: cellPadding, dy: cellPadding)
+        let contentRect = cellRect.insetBy(dx: Self.cellPadding, dy: Self.cellPadding)
         let textWidth = contentRect.width
         var y = contentRect.minY
 
-        // Date-Formatter
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .short
-        dateFormatter.locale = Locale(identifier: "de_DE")
-        dateFormatter.timeZone = .home
-        let dayFormatter = DateFormatter()
-        dayFormatter.dateStyle = .medium
-        dayFormatter.locale = Locale(identifier: "de_DE")
-        dayFormatter.timeZone = .home
-
         // Attribute
-        let headerAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
-            .foregroundColor: UIColor.black
-        ]
-        let metaAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 10, weight: .regular),
-            .foregroundColor: UIColor.darkGray
-        ]
-        let regularAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 10, weight: .regular),
-            .foregroundColor: UIColor.black
-        ]
-        let labelAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 10, weight: .medium),
-            .foregroundColor: UIColor.black
-        ]
+        let headerAttrs = attributes(size: 13, weight: .semibold)
+        let metaAttrs = attributes(size: 10, color: .darkGray)
+        let regularAttrs = attributes(size: 10)
+        let labelAttrs = attributes(size: 10, weight: .medium)
 
         // 1. Event-Name (mit Index-Präfix)
         let nameWidth = textWidth - statusDotSize - 8
-        let nameRect = CGRect(x: contentRect.minX, y: y, width: nameWidth, height: 18)
-        drawText("\(index). \(keynote.eventName)", in: nameRect, pageRect: pageRect, attributes: headerAttrs, context: context, lineBreakMode: .byTruncatingTail)
+        drawText(context: context, "\(index). \(keynote.eventName)",
+                 in: CGRect(x: contentRect.minX, y: y, width: nameWidth, height: 18),
+                 attributes: headerAttrs)
         y += 19
 
         // 2. Datum & Status
         let dateString = keynote.inAbklaerung
             ? "Datum noch nicht geklärt"
-            : dateFormatter.string(from: keynote.eventDate)
+            : Self.cellDateFormatter.string(from: keynote.eventDate)
         let metaLine = "\(dateString)  •  \(keynote.status.rawValue)"
-        drawLine(metaLine, at: &y, width: textWidth, x: contentRect.minX, attrs: metaAttrs, pageRect: pageRect, context: context, height: 13)
+        drawLine(metaLine, at: &y, width: textWidth, x: contentRect.minX, attrs: metaAttrs, context: context)
 
         // 3. Titel
         if !keynote.keynoteTitle.isEmpty {
-            drawLabelValue("Titel:", value: keynote.keynoteTitle, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, pageRect: pageRect, context: context)
+            drawLabelValue("Titel:", value: keynote.keynoteTitle, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, context: context)
         }
 
         // 4. Thema
         if !keynote.keynoteTheme.isEmpty {
-            drawLabelValue("Thema:", value: keynote.keynoteTheme, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, pageRect: pageRect, context: context)
+            drawLabelValue("Thema:", value: keynote.keynoteTheme, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, context: context)
         }
 
         // 5. Ort
         if !keynote.location.isEmpty {
-            drawLabelValue("Ort:", value: keynote.location, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, pageRect: pageRect, context: context)
+            drawLabelValue("Ort:", value: keynote.location, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, context: context)
         }
 
         // 6. Organisation
         if !keynote.clientOrganization.isEmpty {
-            drawLabelValue("Organisation:", value: keynote.clientOrganization, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, pageRect: pageRect, context: context)
+            drawLabelValue("Organisation:", value: keynote.clientOrganization, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, context: context)
         }
 
         // 7. Kontakt
@@ -272,7 +170,7 @@ class KeynotePDFGenerator {
             var parts: [String] = [keynote.contactDisplayName]
             if !keynote.contactEmail.isEmpty { parts.append(keynote.contactEmail) }
             if !keynote.contactPhone.isEmpty { parts.append(keynote.contactPhone) }
-            drawLabelValue("Kontakt:", value: parts.joined(separator: " • "), at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, pageRect: pageRect, context: context)
+            drawLabelValue("Kontakt:", value: parts.joined(separator: " • "), at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, context: context)
         }
 
         // 8. Zielpublikum + Anzahl Zuhörer (kombiniert wenn beides vorhanden)
@@ -280,21 +178,16 @@ class KeynotePDFGenerator {
         if !keynote.targetAudience.isEmpty { audienceParts.append(keynote.targetAudience) }
         if let n = keynote.attendeeCount { audienceParts.append("\(n) Personen") }
         if !audienceParts.isEmpty {
-            drawLabelValue("Publikum:", value: audienceParts.joined(separator: " • "), at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, pageRect: pageRect, context: context)
+            drawLabelValue("Publikum:", value: audienceParts.joined(separator: " • "), at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, context: context)
         }
 
         // 9. Dauer • Honorar • Sprache
-        let feeFormatter = NumberFormatter()
-        feeFormatter.numberStyle = .currency
-        feeFormatter.currencyCode = "CHF"
-        feeFormatter.locale = Locale(identifier: "de_CH")
-        let feeString = feeFormatter.string(from: keynote.agreedFee as NSDecimalNumber) ?? "CHF 0"
         var infoParts: [String] = [
             String(format: "%.0f Min.", keynote.duration),
-            feeString
+            keynote.agreedFeeMoney.formatted
         ]
         if !keynote.language.isEmpty { infoParts.append(keynote.language) }
-        drawLine(infoParts.joined(separator: "  •  "), at: &y, width: textWidth, x: contentRect.minX, attrs: metaAttrs, pageRect: pageRect, context: context, height: 13)
+        drawLine(infoParts.joined(separator: "  •  "), at: &y, width: textWidth, x: contentRect.minX, attrs: metaAttrs, context: context)
 
         // 10. Pendenz (Typ + Note + Erledigt-Status)
         let hasPendenz = !keynote.pendenzNote.isEmpty || keynote.pendenz != .none
@@ -304,12 +197,12 @@ class KeynotePDFGenerator {
                 pendenzText += ": \(keynote.pendenzNote)"
             }
             pendenzText += keynote.pendenzErledigt ? "  ✓" : ""
-            drawLabelValue("Pendenz:", value: pendenzText, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, pageRect: pageRect, context: context)
+            drawLabelValue("Pendenz:", value: pendenzText, at: &y, x: contentRect.minX, width: textWidth, labelAttrs: labelAttrs, valueAttrs: regularAttrs, context: context)
         }
 
         // 11. Angefragt am
-        let requestText = "Angefragt am \(dayFormatter.string(from: keynote.requestDate))"
-        drawLine(requestText, at: &y, width: textWidth, x: contentRect.minX, attrs: metaAttrs, pageRect: pageRect, context: context, height: 13)
+        let requestText = "Angefragt am \(Self.dayFormatter.string(from: keynote.requestDate))"
+        drawLine(requestText, at: &y, width: textWidth, x: contentRect.minX, attrs: metaAttrs, context: context)
 
         // 12. Notizen — auf den verbleibenden Raum begrenzen
         if !keynote.notes.isEmpty {
@@ -323,7 +216,6 @@ class KeynotePDFGenerator {
                     width: textWidth,
                     labelAttrs: labelAttrs,
                     valueAttrs: regularAttrs,
-                    pageRect: pageRect,
                     context: context,
                     height: min(remainingHeight, 40),
                     lineBreakMode: .byTruncatingTail
@@ -334,22 +226,21 @@ class KeynotePDFGenerator {
 
     // MARK: - Text-Hilfen
 
-    private static func drawLine(
+    private func drawLine(
         _ text: String,
         at y: inout CGFloat,
         width: CGFloat,
         x: CGFloat,
         attrs: [NSAttributedString.Key: Any],
-        pageRect: CGRect,
         context: CGContext,
         height: CGFloat = 13
     ) {
-        let rect = CGRect(x: x, y: y, width: width, height: height)
-        drawText(text, in: rect, pageRect: pageRect, attributes: attrs, context: context, lineBreakMode: .byTruncatingTail)
+        drawText(context: context, text, in: CGRect(x: x, y: y, width: width, height: height), attributes: attrs)
         y += height + 1
     }
 
-    private static func drawLabelValue(
+    @MainActor
+    private func drawLabelValue(
         _ label: String,
         value: String,
         at y: inout CGFloat,
@@ -357,49 +248,45 @@ class KeynotePDFGenerator {
         width: CGFloat,
         labelAttrs: [NSAttributedString.Key: Any],
         valueAttrs: [NSAttributedString.Key: Any],
-        pageRect: CGRect,
         context: CGContext,
         height: CGFloat = 13,
         lineBreakMode: NSLineBreakMode = .byTruncatingTail
     ) {
         let labelSize = (label as NSString).size(withAttributes: labelAttrs)
         let labelW = labelSize.width + 4
-        let labelRect = CGRect(x: x, y: y, width: labelW, height: height)
-        drawText(label, in: labelRect, pageRect: pageRect, attributes: labelAttrs, context: context, lineBreakMode: .byTruncatingTail)
-        let valueRect = CGRect(x: x + labelW, y: y, width: width - labelW, height: height)
-        drawText(value, in: valueRect, pageRect: pageRect, attributes: valueAttrs, context: context, lineBreakMode: lineBreakMode)
+        drawText(context: context, label,
+                 in: CGRect(x: x, y: y, width: labelW, height: height), attributes: labelAttrs)
+        drawText(context: context, value,
+                 in: CGRect(x: x + labelW, y: y, width: width - labelW, height: height),
+                 attributes: valueAttrs, lineBreakMode: lineBreakMode)
         y += height + 1
     }
 
-    private static func flip(_ rect: CGRect, in pageRect: CGRect) -> CGRect {
-        CGRect(
-            x: rect.origin.x,
-            y: pageRect.height - rect.origin.y - rect.height,
-            width: rect.width,
-            height: rect.height
-        )
-    }
+    // MARK: - Formatter
 
-    private static func drawText(
-        _ text: String,
-        in rect: CGRect,
-        pageRect: CGRect,
-        attributes: [NSAttributedString.Key: Any],
-        context: CGContext,
-        lineBreakMode: NSLineBreakMode = .byTruncatingTail
-    ) {
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineBreakMode = lineBreakMode
-        var attrs = attributes
-        attrs[.paragraphStyle] = paragraphStyle
+    @MainActor private static let headerDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .long
+        f.timeStyle = .none
+        f.locale = Locale(identifier: "de_DE")
+        f.timeZone = .home
+        return f
+    }()
 
-        let nsString = text as NSString
-        context.saveGState()
-        context.translateBy(x: 0, y: pageRect.height)
-        context.scaleBy(x: 1, y: -1)
-        UIGraphicsPushContext(context)
-        nsString.draw(in: rect, withAttributes: attrs)
-        UIGraphicsPopContext()
-        context.restoreGState()
-    }
+    @MainActor private static let cellDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        f.locale = Locale(identifier: "de_DE")
+        f.timeZone = .home
+        return f
+    }()
+
+    @MainActor private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.locale = Locale(identifier: "de_DE")
+        f.timeZone = .home
+        return f
+    }()
 }

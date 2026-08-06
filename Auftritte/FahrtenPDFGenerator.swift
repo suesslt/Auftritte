@@ -6,27 +6,24 @@
 //  pro Quartal mit Quartals- und Jahrestotalen, A4 Querformat.
 //  Kosten = 2 × Distanz × Kilometerpreis (Hin- und Rückfahrt).
 //
+//  Seit der ScoreUI-Adoption (score v2.5.0, 2026-08-06) liefert
+//  `ReportPDFRenderer` die Infrastruktur (PDF-Lifecycle, Rect-Text mit
+//  Truncation/Ausrichtung, Linien, Report-Kopf/-Fuss); hier verbleiben
+//  Fachlogik, Zeilenmodell und Tabellen-Layout.
+//
 
+import Score
+import ScoreUI
 import Foundation
 import UIKit
 
-@MainActor
-final class FahrtenPDFGenerator {
+nonisolated final class FahrtenPDFGenerator: ReportPDFRenderer {
 
     // MARK: - Layout-Konstanten
 
-    private static let pageWidth: CGFloat = 842   // A4 quer
-    private static let pageHeight: CGFloat = 595
-    private static let pageMargin: CGFloat = 30
-    private static let headerHeight: CGFloat = 50
-    private static let footerHeight: CGFloat = 20
     private static let columnHeaderHeight: CGFloat = 20
 
-    private static var contentTop: CGFloat { pageMargin + headerHeight }
-    private static var contentBottom: CGFloat { pageHeight - pageMargin - footerHeight }
-    private static var contentWidth: CGFloat { pageWidth - 2 * pageMargin }
-
-    // Spalten: (x, Breite, rechtsbündig)
+    // Spalten: (x, Breite)
     private static let colDatum: (x: CGFloat, w: CGFloat) = (30, 70)
     private static let colOrganisation: (x: CGFloat, w: CGFloat) = (108, 190)
     private static let colTitel: (x: CGFloat, w: CGFloat) = (306, 220)
@@ -126,56 +123,55 @@ final class FahrtenPDFGenerator {
 
     // MARK: - Public API
 
+    @MainActor
     static func generatePDF(
         keynotes: [Keynote],
         kilometerpreisCHF: Decimal,
         generationDate: Date = Date()
     ) -> Data {
-        let trips = relevantTrips(from: keynotes)
-        let rows = makeReportRows(trips: trips, preis: kilometerpreisCHF)
+        FahrtenPDFGenerator().render(
+            keynotes: keynotes,
+            kilometerpreisCHF: kilometerpreisCHF,
+            generationDate: generationDate
+        )
+    }
+
+    @MainActor
+    private func render(keynotes: [Keynote], kilometerpreisCHF: Decimal, generationDate: Date) -> Data {
+        let trips = Self.relevantTrips(from: keynotes)
+        let rows = Self.makeReportRows(trips: trips, preis: kilometerpreisCHF)
         let pages = paginate(rows)
-        let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
 
-        let pdfData = NSMutableData()
-        var mediaBox = pageRect
+        guard let (context, pdfData) = beginPDF() else { return Data() }
 
-        guard let consumer = CGDataConsumer(data: pdfData as CFMutableData),
-              let pdfContext = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
-            return Data()
-        }
+        let preisString = Money.of(.chf, kilometerpreisCHF).formatted
+        let erstelltAm = Self.headerDateFormatter.string(from: generationDate)
+        let subtitle = "\(trips.count) Fahrten • Kilometerpreis \(preisString)/km • Erstellt am \(erstelltAm)"
 
         for (pageIndex, pageRows) in pages.enumerated() {
-            pdfContext.beginPDFPage(nil)
+            if pageIndex > 0 { newPage(context: context) }
 
-            drawPageHeader(
-                tripCount: trips.count,
-                kilometerpreis: kilometerpreisCHF,
-                generationDate: generationDate,
-                pageRect: pageRect,
-                context: pdfContext
-            )
-            drawColumnHeaders(pageRect: pageRect, context: pdfContext)
+            drawReportHeader(context: context, title: "Steuerabzüge Fahrten", subtitle: subtitle)
+            drawColumnHeaders(context: context)
 
-            var y = contentTop + columnHeaderHeight
+            var y = contentTop + Self.columnHeaderHeight
             var tripIndex = 0
             for row in pageRows {
-                drawRow(row, at: y, tripIndex: &tripIndex, preis: kilometerpreisCHF, pageRect: pageRect, context: pdfContext)
+                drawRow(row, at: y, tripIndex: &tripIndex, preis: kilometerpreisCHF, context: context)
                 y += row.height
             }
 
-            drawFooter(pageNumber: pageIndex + 1, totalPages: pages.count, pageRect: pageRect, context: pdfContext)
-            pdfContext.endPDFPage()
+            drawReportFooter(context: context, pageNumber: pageIndex + 1, totalPages: pages.count)
         }
 
-        pdfContext.closePDF()
-        return pdfData as Data
+        return endPDF(context: context, pdfData: pdfData)
     }
 
     // MARK: - Pagination
 
     /// Teilt die Zeilen in Seiten auf. Ein Quartals-Header steht nie als letzte Zeile einer Seite.
-    private static func paginate(_ rows: [ReportRow]) -> [[ReportRow]] {
-        let capacity = contentBottom - contentTop - columnHeaderHeight
+    private func paginate(_ rows: [ReportRow]) -> [[ReportRow]] {
+        let capacity = contentBottom - contentTop - Self.columnHeaderHeight
         var pages: [[ReportRow]] = []
         var currentPage: [ReportRow] = []
         var usedHeight: CGFloat = 0
@@ -204,171 +200,108 @@ final class FahrtenPDFGenerator {
         return pages.isEmpty ? [[]] : pages
     }
 
-    // MARK: - Drawing: Header / Spaltenkopf / Footer
+    // MARK: - Drawing: Spaltenkopf
 
-    private static func drawPageHeader(
-        tripCount: Int,
-        kilometerpreis: Decimal,
-        generationDate: Date,
-        pageRect: CGRect,
-        context: CGContext
-    ) {
-        let titleAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 20, weight: .bold),
-            .foregroundColor: UIColor.black
-        ]
-        let titleRect = CGRect(x: pageMargin, y: pageMargin, width: contentWidth * 0.6, height: 26)
-        drawText("Steuerabzüge Fahrten", in: titleRect, pageRect: pageRect, attributes: titleAttrs, context: context)
-
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        formatter.timeStyle = .none
-        formatter.locale = Locale(identifier: "de_DE")
-        formatter.timeZone = .home
-        let preisString = chfFormatter.string(from: kilometerpreis as NSDecimalNumber) ?? "CHF \(kilometerpreis)"
-        let subtitle = "\(tripCount) Fahrten • Kilometerpreis \(preisString)/km • Erstellt am \(formatter.string(from: generationDate))"
-        let subtitleAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 11, weight: .regular),
-            .foregroundColor: UIColor.darkGray
-        ]
-        let subtitleRect = CGRect(x: pageMargin, y: pageMargin + 28, width: contentWidth * 0.8, height: 16)
-        drawText(subtitle, in: subtitleRect, pageRect: pageRect, attributes: subtitleAttrs, context: context)
-
-        // Trennlinie unterhalb des Headers
-        context.saveGState()
-        context.setStrokeColor(UIColor.lightGray.cgColor)
-        context.setLineWidth(0.5)
-        let lineY = pageHeight - (pageMargin + headerHeight - 4)
-        context.move(to: CGPoint(x: pageMargin, y: lineY))
-        context.addLine(to: CGPoint(x: pageMargin + contentWidth, y: lineY))
-        context.strokePath()
-        context.restoreGState()
-    }
-
-    private static func drawColumnHeaders(pageRect: CGRect, context: CGContext) {
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 9, weight: .semibold),
-            .foregroundColor: UIColor.black
-        ]
+    @MainActor
+    private func drawColumnHeaders(context: CGContext) {
+        let attrs = attributes(size: 9, weight: .semibold)
         let y = contentTop + 2
-        drawText("Datum", in: CGRect(x: colDatum.x, y: y, width: colDatum.w, height: 13), pageRect: pageRect, attributes: attrs, context: context)
-        drawText("Organisation", in: CGRect(x: colOrganisation.x, y: y, width: colOrganisation.w, height: 13), pageRect: pageRect, attributes: attrs, context: context)
-        drawText("Titel", in: CGRect(x: colTitel.x, y: y, width: colTitel.w, height: 13), pageRect: pageRect, attributes: attrs, context: context)
-        drawText("Ort", in: CGRect(x: colOrt.x, y: y, width: colOrt.w, height: 13), pageRect: pageRect, attributes: attrs, context: context)
-        drawText("Kilometer", in: CGRect(x: colKilometer.x, y: y, width: colKilometer.w, height: 13), pageRect: pageRect, attributes: attrs, context: context, alignment: .right)
-        drawText("Kosten (CHF)", in: CGRect(x: colKosten.x, y: y, width: colKosten.w, height: 13), pageRect: pageRect, attributes: attrs, context: context, alignment: .right)
+        drawText(context: context, "Datum", in: CGRect(x: Self.colDatum.x, y: y, width: Self.colDatum.w, height: 13), attributes: attrs)
+        drawText(context: context, "Organisation", in: CGRect(x: Self.colOrganisation.x, y: y, width: Self.colOrganisation.w, height: 13), attributes: attrs)
+        drawText(context: context, "Titel", in: CGRect(x: Self.colTitel.x, y: y, width: Self.colTitel.w, height: 13), attributes: attrs)
+        drawText(context: context, "Ort", in: CGRect(x: Self.colOrt.x, y: y, width: Self.colOrt.w, height: 13), attributes: attrs)
+        drawText(context: context, "Kilometer", in: CGRect(x: Self.colKilometer.x, y: y, width: Self.colKilometer.w, height: 13), attributes: attrs, alignment: .right)
+        drawText(context: context, "Kosten (CHF)", in: CGRect(x: Self.colKosten.x, y: y, width: Self.colKosten.w, height: 13), attributes: attrs, alignment: .right)
 
         // Unterstreichung des Spaltenkopfs
-        drawHorizontalLine(atY: y + 15, lineWidth: 0.5, color: UIColor.darkGray, context: context)
-    }
-
-    private static func drawFooter(pageNumber: Int, totalPages: Int, pageRect: CGRect, context: CGContext) {
-        let footerText = "Seite \(pageNumber) von \(totalPages)"
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 10, weight: .regular),
-            .foregroundColor: UIColor.darkGray
-        ]
-        let size = (footerText as NSString).size(withAttributes: attrs)
-        let rect = CGRect(
-            x: (pageWidth - size.width) / 2,
-            y: pageHeight - pageMargin / 2 - size.height / 2,
-            width: size.width,
-            height: size.height
-        )
-        drawText(footerText, in: rect, pageRect: pageRect, attributes: attrs, context: context)
+        drawHRule(context: context, y: y + 15, from: marginLeft, to: marginLeft + contentWidth,
+                  lineWidth: 0.5, color: UIColor.darkGray.cgColor)
     }
 
     // MARK: - Drawing: Zeilen
 
-    private static func drawRow(
+    @MainActor
+    private func drawRow(
         _ row: ReportRow,
         at y: CGFloat,
         tripIndex: inout Int,
         preis: Decimal,
-        pageRect: CGRect,
         context: CGContext
     ) {
         switch row {
         case .quarterHeader(let label):
             // Graues Band über die volle Breite
-            let bandRect = CGRect(x: pageMargin, y: y + 2, width: contentWidth, height: row.height - 4)
-            context.saveGState()
-            context.setFillColor(UIColor(white: 0.90, alpha: 1.0).cgColor)
-            context.fill(flip(bandRect, in: pageRect))
-            context.restoreGState()
-
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 10, weight: .semibold),
-                .foregroundColor: UIColor.black
-            ]
-            drawText(label, in: CGRect(x: colDatum.x + 4, y: y + 4, width: 200, height: 13), pageRect: pageRect, attributes: attrs, context: context)
+            fillRect(context: context, x: marginLeft, y: y + 2,
+                     width: contentWidth, height: row.height - 4,
+                     color: CGColor(gray: 0.90, alpha: 1.0))
+            drawText(context: context, label,
+                     in: CGRect(x: Self.colDatum.x + 4, y: y + 4, width: 200, height: 13),
+                     attributes: attributes(size: 10, weight: .semibold))
 
         case .trip(let keynote):
             if tripIndex % 2 == 1 {
-                let zebraRect = CGRect(x: pageMargin, y: y, width: contentWidth, height: row.height)
-                context.saveGState()
-                context.setFillColor(UIColor(white: 0.96, alpha: 1.0).cgColor)
-                context.fill(flip(zebraRect, in: pageRect))
-                context.restoreGState()
+                fillRect(context: context, x: marginLeft, y: y,
+                         width: contentWidth, height: row.height,
+                         color: CGColor(gray: 0.96, alpha: 1.0))
             }
             tripIndex += 1
 
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 9, weight: .regular),
-                .foregroundColor: UIColor.black
-            ]
+            let attrs = attributes(size: 9)
             let km = keynote.distanceKm ?? 0
-            let cost = kosten(km: km, preis: preis)
+            let cost = Self.kosten(km: km, preis: preis)
             let textY = y + 2
-            drawText(dateFormatter.string(from: keynote.eventDate), in: CGRect(x: colDatum.x, y: textY, width: colDatum.w, height: 12), pageRect: pageRect, attributes: attrs, context: context)
-            drawText(keynote.clientOrganization, in: CGRect(x: colOrganisation.x, y: textY, width: colOrganisation.w, height: 12), pageRect: pageRect, attributes: attrs, context: context)
-            drawText(keynote.keynoteTitle, in: CGRect(x: colTitel.x, y: textY, width: colTitel.w, height: 12), pageRect: pageRect, attributes: attrs, context: context)
-            drawText(keynote.location, in: CGRect(x: colOrt.x, y: textY, width: colOrt.w, height: 12), pageRect: pageRect, attributes: attrs, context: context)
-            drawText(String(km), in: CGRect(x: colKilometer.x, y: textY, width: colKilometer.w, height: 12), pageRect: pageRect, attributes: attrs, context: context, alignment: .right)
-            drawText(formatKosten(cost), in: CGRect(x: colKosten.x, y: textY, width: colKosten.w, height: 12), pageRect: pageRect, attributes: attrs, context: context, alignment: .right)
+            drawText(context: context, Self.dateFormatter.string(from: keynote.eventDate), in: CGRect(x: Self.colDatum.x, y: textY, width: Self.colDatum.w, height: 12), attributes: attrs)
+            drawText(context: context, keynote.clientOrganization, in: CGRect(x: Self.colOrganisation.x, y: textY, width: Self.colOrganisation.w, height: 12), attributes: attrs)
+            drawText(context: context, keynote.keynoteTitle, in: CGRect(x: Self.colTitel.x, y: textY, width: Self.colTitel.w, height: 12), attributes: attrs)
+            drawText(context: context, keynote.location, in: CGRect(x: Self.colOrt.x, y: textY, width: Self.colOrt.w, height: 12), attributes: attrs)
+            drawText(context: context, String(km), in: CGRect(x: Self.colKilometer.x, y: textY, width: Self.colKilometer.w, height: 12), attributes: attrs, alignment: .right)
+            drawText(context: context, Self.formatKosten(cost), in: CGRect(x: Self.colKosten.x, y: textY, width: Self.colKosten.w, height: 12), attributes: attrs, alignment: .right)
 
         case .quarterTotal(let label, let km, let kosten):
-            drawHorizontalLine(atY: y + 1, lineWidth: 0.5, color: UIColor.darkGray, context: context)
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 9, weight: .semibold),
-                .foregroundColor: UIColor.black
-            ]
-            drawTotalRow(label: label, km: km, kosten: kosten, attrs: attrs, atY: y + 4, pageRect: pageRect, context: context)
+            drawHRule(context: context, y: y + 1, from: marginLeft, to: marginLeft + contentWidth,
+                      lineWidth: 0.5, color: UIColor.darkGray.cgColor)
+            drawTotalRow(label: label, km: km, kosten: kosten,
+                         attrs: attributes(size: 9, weight: .semibold), atY: y + 4, context: context)
 
         case .yearTotal(let year, let km, let kosten):
-            drawHorizontalLine(atY: y + 1, lineWidth: 1.2, color: UIColor.black, context: context)
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 10, weight: .bold),
-                .foregroundColor: UIColor.black
-            ]
-            drawTotalRow(label: "Total \(String(year))", km: km, kosten: kosten, attrs: attrs, atY: y + 4, pageRect: pageRect, context: context)
+            drawHRule(context: context, y: y + 1, from: marginLeft, to: marginLeft + contentWidth,
+                      lineWidth: 1.2, color: UIColor.black.cgColor)
+            drawTotalRow(label: "Total \(String(year))", km: km, kosten: kosten,
+                         attrs: attributes(size: 10, weight: .bold), atY: y + 4, context: context)
 
         case .emptyNotice:
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 11, weight: .regular),
-                .foregroundColor: UIColor.darkGray
-            ]
-            drawText("Keine Fahrten vorhanden", in: CGRect(x: colDatum.x, y: y + 2, width: contentWidth, height: 14), pageRect: pageRect, attributes: attrs, context: context)
+            drawText(context: context, "Keine Fahrten vorhanden",
+                     in: CGRect(x: Self.colDatum.x, y: y + 2, width: contentWidth, height: 14),
+                     attributes: attributes(size: 11, color: .darkGray))
         }
     }
 
-    private static func drawTotalRow(
+    @MainActor
+    private func drawTotalRow(
         label: String,
         km: Int,
         kosten: Decimal,
         attrs: [NSAttributedString.Key: Any],
         atY y: CGFloat,
-        pageRect: CGRect,
         context: CGContext
     ) {
-        drawText(label, in: CGRect(x: colOrt.x, y: y, width: colOrt.w, height: 13), pageRect: pageRect, attributes: attrs, context: context)
-        drawText(String(km), in: CGRect(x: colKilometer.x, y: y, width: colKilometer.w, height: 13), pageRect: pageRect, attributes: attrs, context: context, alignment: .right)
-        drawText(formatKosten(kosten), in: CGRect(x: colKosten.x, y: y, width: colKosten.w, height: 13), pageRect: pageRect, attributes: attrs, context: context, alignment: .right)
+        drawText(context: context, label, in: CGRect(x: Self.colOrt.x, y: y, width: Self.colOrt.w, height: 13), attributes: attrs)
+        drawText(context: context, String(km), in: CGRect(x: Self.colKilometer.x, y: y, width: Self.colKilometer.w, height: 13), attributes: attrs, alignment: .right)
+        drawText(context: context, Self.formatKosten(kosten), in: CGRect(x: Self.colKosten.x, y: y, width: Self.colKosten.w, height: 13), attributes: attrs, alignment: .right)
     }
 
     // MARK: - Formatierung
 
-    private static let dateFormatter: DateFormatter = {
+    @MainActor private static let headerDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .long
+        f.timeStyle = .none
+        f.locale = Locale(identifier: "de_DE")
+        f.timeZone = .home
+        return f
+    }()
+
+    @MainActor private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "dd.MM.yyyy"
         f.locale = Locale(identifier: "de_CH")
@@ -376,68 +309,8 @@ final class FahrtenPDFGenerator {
         return f
     }()
 
-    private static let chfFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "CHF"
-        f.locale = Locale(identifier: "de_CH")
-        return f
-    }()
-
     /// Kosten ohne Währungspräfix (die Spalte heisst bereits «Kosten (CHF)»).
     private static func formatKosten(_ value: Decimal) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = 2
-        f.maximumFractionDigits = 2
-        f.locale = Locale(identifier: "de_CH")
-        return f.string(from: value as NSDecimalNumber) ?? "\(value)"
-    }
-
-    // MARK: - Text-Hilfen
-
-    private static func drawHorizontalLine(atY y: CGFloat, lineWidth: CGFloat, color: UIColor, context: CGContext) {
-        context.saveGState()
-        context.setStrokeColor(color.cgColor)
-        context.setLineWidth(lineWidth)
-        let flippedY = pageHeight - y
-        context.move(to: CGPoint(x: pageMargin, y: flippedY))
-        context.addLine(to: CGPoint(x: pageMargin + contentWidth, y: flippedY))
-        context.strokePath()
-        context.restoreGState()
-    }
-
-    private static func flip(_ rect: CGRect, in pageRect: CGRect) -> CGRect {
-        CGRect(
-            x: rect.origin.x,
-            y: pageRect.height - rect.origin.y - rect.height,
-            width: rect.width,
-            height: rect.height
-        )
-    }
-
-    private static func drawText(
-        _ text: String,
-        in rect: CGRect,
-        pageRect: CGRect,
-        attributes: [NSAttributedString.Key: Any],
-        context: CGContext,
-        lineBreakMode: NSLineBreakMode = .byTruncatingTail,
-        alignment: NSTextAlignment = .left
-    ) {
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineBreakMode = lineBreakMode
-        paragraphStyle.alignment = alignment
-        var attrs = attributes
-        attrs[.paragraphStyle] = paragraphStyle
-
-        let nsString = text as NSString
-        context.saveGState()
-        context.translateBy(x: 0, y: pageRect.height)
-        context.scaleBy(x: 1, y: -1)
-        UIGraphicsPushContext(context)
-        nsString.draw(in: rect, withAttributes: attrs)
-        UIGraphicsPopContext()
-        context.restoreGState()
+        Money.of(.chf, value).formattedAmount(locale: Locale(identifier: "de_CH"))
     }
 }

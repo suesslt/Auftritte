@@ -1,15 +1,15 @@
 {
-  "originHash" : "446fd9c18cb25956fd96f4bff1b4bd03443518c90645a9cc8a92b5f5e889fa72",
-  "pins" : [
+  "originHash": "446fd9c18cb25956fd96f4bff1b4bd03443518c90645a9cc8a92b5f5e889fa72",
+  "pins": [
     {
-      "identity" : "score",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/suesslt/score.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "67490014d28415a4ef2250b413cd2a72e7dd0c34"
+      "identity": "score",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/suesslt/score.git",
+      "state": {
+        "revision": "53902413deffdf970bfa58fda3d2dfdbea951373",
+        "version": "2.5.0"
       }
     }
   ],
-  "version" : 3
+  "version": 3
 }

@@ -5,6 +5,7 @@
 //  Created by Thomas Süssli on 08.02.2026.
 //
 
+import Score
 import Foundation
 import EventKit
 import Combine
@@ -70,7 +71,7 @@ class CalendarService: ObservableObject {
         Anlass: \(keynote.eventName)
         Thema: \(keynote.keynoteTheme)
         Auftraggeber: \(keynote.clientOrganization)
-        Honorar: \(keynote.agreedFee) CHF
+        Honorar: \(keynote.agreedFeeMoney.formatted)
         """
         event.calendar = targetCalendar
         
@@ -93,7 +94,7 @@ class CalendarService: ObservableObject {
         Anlass: \(keynote.eventName)
         Thema: \(keynote.keynoteTheme)
         Auftraggeber: \(keynote.clientOrganization)
-        Honorar: \(keynote.agreedFee) CHF
+        Honorar: \(keynote.agreedFeeMoney.formatted)
         """
 
         try eventStore.save(event, span: .thisEvent)

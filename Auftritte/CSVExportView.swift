@@ -5,6 +5,7 @@
 //  Created by Thomas Süssli on 18.02.2026.
 //
 
+import ScoreUI
 import SwiftUI
 import SwiftData
 import UIKit
@@ -155,11 +156,11 @@ private enum ExportPhase {
     case failed(message: String)
 }
 
-// MARK: - Share Button (iPad-kompatibel)
-//
-// Reiner SwiftUI-Button mit UIViewControllerRepresentable-Helfer
-// für das UIActivityViewController-Popover.
+// MARK: - Share Button
 
+// Seit der ScoreUI-Adoption (score v2.3.0, 2026-08-06) präsentiert der Button
+// das geteilte `ScoreUI.ShareSheet` als System-Sheet (iPad: Formsheet) — der
+// projektlokale `SharePresenter` mit unsichtbarem Popover-Anker ist entfallen.
 private struct ShareButton: View {
     let url: URL
     var onShared: (() -> Void)? = nil
@@ -173,50 +174,11 @@ private struct ShareButton: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.regular)
-        .background {
-            // Unsichtbarer Anker-View, der den UIActivityViewController präsentiert
-            SharePresenter(url: url, isPresented: $showSheet, onShared: onShared)
-                .frame(width: 0, height: 0)
-        }
-    }
-}
-
-// Präsentiert UIActivityViewController mit korrektem iPad-Popover-Anker
-private struct SharePresenter: UIViewControllerRepresentable {
-    let url: URL
-    @Binding var isPresented: Bool
-    var onShared: (() -> Void)? = nil
-
-    func makeUIViewController(context: Context) -> UIViewController {
-        UIViewController()
-    }
-
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        guard isPresented, uiViewController.presentedViewController == nil else { return }
-
-        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-
-        // Mindestgrösse für das Sheet (wirkt sich vor allem auf iPad aus)
-        vc.preferredContentSize = CGSize(width: 540, height: 620)
-
-        if let popover = vc.popoverPresentationController {
-            popover.sourceView = uiViewController.view
-            popover.sourceRect = CGRect(
-                x: uiViewController.view.bounds.midX,
-                y: uiViewController.view.bounds.midY,
-                width: 0, height: 0
-            )
-            popover.permittedArrowDirections = []
-        }
-
-        vc.completionWithItemsHandler = { _, completed, _, _ in
-            isPresented = false
-            if completed {
-                onShared?()
+        .sheet(isPresented: $showSheet) {
+            ShareSheet(items: [url]) { completed in
+                if completed { onShared?() }
             }
         }
-
-        uiViewController.present(vc, animated: true)
     }
 }
 

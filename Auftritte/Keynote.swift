@@ -5,6 +5,7 @@
 //  Created by Thomas Süssli on 08.02.2026.
 //
 
+import Score
 import Foundation
 import SwiftData
 
@@ -117,6 +118,13 @@ final class Keynote {
         case .client: return .pendenzClient
         case .none: return .auftrittsbereit
         }
+    }
+
+    /// Honorar als `Money` (Score, Rule FW-16) — Anzeige und Arithmetik laufen
+    /// hierüber; `agreedFee: Decimal` bleibt für Formular-Binding und Init.
+    var agreedFeeMoney: Money {
+        get { .of(.chf, agreedFee) }
+        set { agreedFee = newValue.amount }
     }
 
     // Computed property für Honorar mit Decimal-Kompatibilität

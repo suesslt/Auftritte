@@ -6,13 +6,14 @@
 //
 
 import Foundation
+import Score
 import SwiftData
 
 // MARK: - Import Result
 
 struct CSVImportResult {
     let rows: [CSVImportRow]
-    
+
     var validRows: [CSVImportRow] { rows.filter { $0.error == nil } }
     var invalidRows: [CSVImportRow] { rows.filter { $0.error != nil } }
 }
@@ -31,7 +32,7 @@ enum CSVParseError: LocalizedError {
     case emptyFile
     case missingHeader
     case missingRequiredColumns([String])
-    
+
     var errorDescription: String? {
         switch self {
         case .emptyFile:
@@ -46,11 +47,16 @@ enum CSVParseError: LocalizedError {
 
 // MARK: - CSV Importer Service
 
+/// Seit der Score-CSV-Adoption (score v2.2.0, 2026-08-06) übernimmt
+/// `Score.CSVImporter` das RFC-4180-Parsen (Quotes, Multiline-Felder, BOM);
+/// hier verbleibt nur das Keynote-Mapping. Die Header sind ein Format-Vertrag
+/// mit alten Exporten — deshalb `lowercasedHeaders: false` und fester
+/// Komma-Separator.
 actor KeynoteCSVImporter {
-    
+
     // Pflichtkolonnen – ohne diese kann eine Zeile nicht importiert werden
     private static let requiredColumns = ["eventName", "eventDate"]
-    
+
     // Alle erwarteten Kolonnen
     private static let knownColumns = [
         "eventName", "eventDate", "keynoteTitle", "keynoteTheme", "duration",
@@ -73,52 +79,45 @@ actor KeynoteCSVImporter {
         default:                                      return raw
         }
     }
-    
+
     // ISO 8601 Date Formatter (wie im Export verwendet)
     private let isoFormatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
         return f
     }()
-    
+
     /// Parst den CSV-Text und gibt ein `CSVImportResult` zurück.
     func parse(_ csvText: String) throws -> CSVImportResult {
-        // Gesamten Text RFC-4180-konform in Zeilen (Records) aufteilen –
-        // dabei werden Zeilenumbrüche innerhalb von Anführungszeichen NICHT als Trenner behandelt.
-        let records = parseCSVRecords(csvText)
-        
-        guard !records.isEmpty else { throw CSVParseError.emptyFile }
-        guard records.count >= 2 else { throw CSVParseError.missingHeader }
-        
-        // Header parsen
-        let headers = records[0]
-        
-        // Pflichtkolonnen prüfen
-        let missing = Self.requiredColumns.filter { !headers.contains($0) }
-        guard missing.isEmpty else { throw CSVParseError.missingRequiredColumns(missing) }
-        
-        // Datenzeilen parsen
-        var rows: [CSVImportRow] = []
-        for (index, fields) in records.dropFirst().enumerated() {
-            let lineNumber = index + 2 // 1-basiert, Zeile 1 = Header
-            let row = parseRow(fields: fields, headers: headers, lineNumber: lineNumber)
-            rows.append(row)
+        do {
+            // Der Transform reicht die Zeile durch — die Fehlerbehandlung je Zeile
+            // (Keynote? + error-Text) bleibt Sache von `parseRow`.
+            let parsed = try Score.CSVImporter.parseWithErrors(
+                from: csvText, separator: ",",
+                required: Self.requiredColumns,
+                lowercasedHeaders: false
+            ) { row in row }
+
+            var rows: [CSVImportRow] = []
+            for (index, fields) in parsed.valid.enumerated() {
+                let lineNumber = index + 2 // 1-basiert, Zeile 1 = Header
+                rows.append(parseRow(fields: fields, lineNumber: lineNumber))
+            }
+            return CSVImportResult(rows: rows)
+        } catch Score.CSVImporter.CSVImportError.missingColumns(let cols) {
+            throw CSVParseError.missingRequiredColumns(cols)
+        } catch Score.CSVImporter.CSVImportError.emptyFile {
+            // Score unterscheidet «leer» nicht von «nur Kopfzeile» — hier schon.
+            let hasAnyContent = csvText.contains(where: { !$0.isWhitespace })
+            throw hasAnyContent ? CSVParseError.missingHeader : CSVParseError.emptyFile
         }
-        
-        return CSVImportResult(rows: rows)
     }
-    
+
     // MARK: - Row Parsing
-    
-    private func parseRow(fields values: [String], headers: [String], lineNumber: Int) -> CSVImportRow {
-        // Header → Value Mapping
-        var fields: [String: String] = [:]
-        for (i, header) in headers.enumerated() {
-            fields[header] = i < values.count ? values[i] : ""
-        }
-        
+
+    private func parseRow(fields: [String: String], lineNumber: Int) -> CSVImportRow {
         let rawEventName = fields["eventName"] ?? ""
-        
+
         // Pflichtfelder prüfen
         guard !rawEventName.isEmpty else {
             return CSVImportRow(
@@ -128,7 +127,7 @@ actor KeynoteCSVImporter {
                 error: "eventName ist leer."
             )
         }
-        
+
         guard let eventDate = parseDate(fields["eventDate"]) else {
             return CSVImportRow(
                 lineNumber: lineNumber,
@@ -137,7 +136,7 @@ actor KeynoteCSVImporter {
                 error: "Ungültiges Datum: \"\(fields["eventDate"] ?? "")\""
             )
         }
-        
+
         // Optionale Felder
         let keynoteTitle       = fields["keynoteTitle"] ?? ""
         let keynoteTheme       = fields["keynoteTheme"] ?? ""
@@ -155,11 +154,11 @@ actor KeynoteCSVImporter {
         let status = KeynoteStatus(rawValue: statusRaw) ?? .requested
 
         // Neue Felder
-        let inAbklaerung = (fields["inAbklaerung"] ?? "false").lowercased() == "true"
+        let inAbklaerung = Score.CSVImporter.parseFlag(fields["inAbklaerung"])
         let pendenzRawValue = fields["pendenzRaw"] ?? Pendenz.speaker.rawValue
         let pendenz = Pendenz(rawValue: pendenzRawValue) ?? .speaker
         let pendenzNote = fields["pendenzNote"] ?? ""
-        let pendenzErledigt = (fields["pendenzErledigt"] ?? "false").lowercased() == "true"
+        let pendenzErledigt = Score.CSVImporter.parseFlag(fields["pendenzErledigt"])
 
         // Kontaktnamen: explizite Spalten bevorzugt, sonst Heuristik aus contactFullName
         let explicitFirst = fields["contactFirstName"] ?? ""
@@ -195,7 +194,7 @@ actor KeynoteCSVImporter {
             pendenzNote: pendenzNote,
             pendenzErledigt: pendenzErledigt
         )
-        
+
         // Honorar direkt in Cents setzen (kein Rundungsfehler)
         keynote.agreedFeeInCents = agreedFeeInCents
 
@@ -204,7 +203,7 @@ actor KeynoteCSVImporter {
 
         // Distanz in km (optional)
         keynote.distanceKm = Int(fields["distanceKm"] ?? "")
-        
+
         return CSVImportRow(
             lineNumber: lineNumber,
             keynote: keynote,
@@ -212,119 +211,9 @@ actor KeynoteCSVImporter {
             error: nil
         )
     }
-    
-    // MARK: - CSV Parser (RFC 4180 konform)
 
-    /// Parst den gesamten CSV-Text in Records (Zeilen) und Felder.
-    /// Zeilenumbrüche innerhalb von Anführungszeichen werden korrekt ignoriert.
-    /// Leere Records (z. B. abschliessende Leerzeile) werden übersprungen.
-    private func parseCSVRecords(_ text: String) -> [[String]] {
-        var records: [[String]] = []
-        var currentRecord: [String] = []
-        var currentField = ""
-        var inQuotes = false
-        var index = text.startIndex
-
-        while index < text.endIndex {
-            let char = text[index]
-
-            if inQuotes {
-                if char == "\"" {
-                    let next = text.index(after: index)
-                    if next < text.endIndex && text[next] == "\"" {
-                        // "" → escaptes Anführungszeichen
-                        currentField.append("\"")
-                        index = text.index(after: next)
-                        continue
-                    } else {
-                        // Schliessende Anführungszeichen
-                        inQuotes = false
-                    }
-                } else {
-                    // Alles innerhalb von Quotes – auch Kommas und Newlines – direkt anhängen
-                    currentField.append(char)
-                }
-            } else {
-                switch char {
-                case "\"":
-                    inQuotes = true
-                case ",":
-                    currentRecord.append(currentField)
-                    currentField = ""
-                case "\r\n", "\n", "\r":
-                    // Zeilenende: aktuelles Feld und Record abschliessen
-                    // \r\n: das \n wird in der nächsten Iteration übersprungen
-                    currentRecord.append(currentField)
-                    currentField = ""
-                    if !currentRecord.allSatisfy({ $0.isEmpty }) {
-                        records.append(currentRecord)
-                    }
-                    currentRecord = []
-                    // \r\n überbrücken
-                    if char == "\r" {
-                        let next = text.index(after: index)
-                        if next < text.endIndex && text[next] == "\n" {
-                            index = text.index(after: next)
-                            continue
-                        }
-                    }
-                default:
-                    currentField.append(char)
-                }
-            }
-
-            index = text.index(after: index)
-        }
-
-        // Letztes Feld und Record nicht vergessen
-        currentRecord.append(currentField)
-        if !currentRecord.allSatisfy({ $0.isEmpty }) {
-            records.append(currentRecord)
-        }
-
-        return records
-    }
-
-    /// Parst eine einzelne CSV-Zeile (ohne Zeilenumbrüche in Feldern).
-    /// Wird nur noch für isolierte Zeilen benötigt.
-    func parseCSVLine(_ line: String) -> [String] {
-        var fields: [String] = []
-        var current = ""
-        var inQuotes = false
-        var index = line.startIndex
-
-        while index < line.endIndex {
-            let char = line[index]
-
-            if char == "\"" {
-                if inQuotes {
-                    let next = line.index(after: index)
-                    if next < line.endIndex && line[next] == "\"" {
-                        current.append("\"")
-                        index = line.index(after: next)
-                        continue
-                    } else {
-                        inQuotes = false
-                    }
-                } else {
-                    inQuotes = true
-                }
-            } else if char == "," && !inQuotes {
-                fields.append(current)
-                current = ""
-            } else {
-                current.append(char)
-            }
-
-            index = line.index(after: index)
-        }
-
-        fields.append(current)
-        return fields
-    }
-    
     // MARK: - Date Parsing
-    
+
     private func parseDate(_ string: String?) -> Date? {
         guard let s = string, !s.isEmpty else { return nil }
         return isoFormatter.date(from: s)

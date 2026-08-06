@@ -5,6 +5,7 @@
 //  Created by Thomas Süssli on 18.02.2026.
 //
 
+import ScoreUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -17,7 +18,7 @@ struct PDFExportView: View {
     @State private var isExporting = false
     @State private var showFileExporter = false
     @State private var exportError: String?
-    @State private var pdfDocument: PDFFile?
+    @State private var pdfDocument: DataFileDocument?
 
     var body: some View {
         NavigationStack {
@@ -79,29 +80,8 @@ struct PDFExportView: View {
             title: title
         )
 
-        pdfDocument = PDFFile(data: pdfData)
+        pdfDocument = DataFileDocument(data: pdfData)
         showFileExporter = true
     }
 }
 
-/// A `FileDocument` wrapper so SwiftUI's fileExporter can handle raw PDF data.
-struct PDFFile: FileDocument {
-    static var readableContentTypes: [UTType] { [.pdf] }
-
-    var data: Data
-
-    init(data: Data) {
-        self.data = data
-    }
-
-    init(configuration: ReadConfiguration) throws {
-        guard let fileData = configuration.file.regularFileContents else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
-        data = fileData
-    }
-
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: data)
-    }
-}

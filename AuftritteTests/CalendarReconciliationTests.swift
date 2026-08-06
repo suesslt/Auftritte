@@ -3,6 +3,7 @@
 //  AuftritteTests
 //
 
+import Score
 import Testing
 import Foundation
 @testable import Auftritte

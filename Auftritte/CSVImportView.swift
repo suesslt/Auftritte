@@ -5,6 +5,7 @@
 //  Created by Thomas Süssli on 18.02.2026.
 //
 
+import Score
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers

@@ -12,6 +12,7 @@
 //  einer anderen Zeitzone korrekt bleibt.
 //
 
+import Score
 import Foundation
 import EventKit
 

@@ -5,6 +5,7 @@
 //  Created by Thomas Süssli on 08.02.2026.
 //
 
+import Score
 import SwiftUI
 import SwiftData
 import EventKit

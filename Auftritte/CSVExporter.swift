@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Score
 
 // MARK: - CSV Exporter Service
 
@@ -111,18 +112,10 @@ actor KeynoteCSVExporter {
         return fields.map { csvField($0) }.joined(separator: ",")
     }
 
-    /// Escaped einen Wert gemäss RFC 4180.
+    /// Escaped einen Wert gemäss RFC 4180 — seit score v2.2.0 delegiert an die
+    /// geteilte Implementierung (Format-Vertrag: Komma-Separator, CRLF bleibt hier).
     private func csvField(_ value: String) -> String {
-        let needsQuoting = value.contains(",")
-            || value.contains("\"")
-            || value.contains("\n")
-            || value.contains("\r")
-
-        if needsQuoting {
-            let escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
-            return "\"\(escaped)\""
-        }
-        return value
+        Score.CSVExporter.escapeCSV(value, separator: ",")
     }
 
     private func fileTimestamp() -> String {

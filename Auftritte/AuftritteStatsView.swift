@@ -5,6 +5,7 @@
 //  Created by Thomas Süssli on 08.02.2026.
 //
 
+import Score
 import SwiftUI
 import SwiftData
 
@@ -86,12 +87,7 @@ struct KeynoteStatsView: View {
     }
     
     private func formatCurrency(_ value: Decimal) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        let formatted = formatter.string(from: value as NSDecimalNumber) ?? "0"
-        return "\(formatted) CHF"
+        Money.of(.chf, value).formatted
     }
 }
 

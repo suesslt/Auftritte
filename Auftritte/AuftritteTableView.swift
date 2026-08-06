@@ -6,6 +6,7 @@
 //  individuell per Drag-Handle anpassbaren Spaltenbreiten (persistent).
 //
 
+import Score
 import SwiftUI
 import SwiftData
 
@@ -380,12 +381,7 @@ struct AuftritteTableView: View {
 
     private static func formatFee(_ value: Decimal) -> String {
         guard value > 0 else { return "" }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        let formatted = formatter.string(from: value as NSDecimalNumber) ?? "0"
-        return "\(formatted) CHF"
+        return Money.of(.chf, value).formatted
     }
 }
 

@@ -6,6 +6,7 @@
 //  mit den Auftritten und zeigt vier Gruppen. Aufbau analog CSVImportView.
 //
 
+import Score
 import SwiftUI
 import SwiftData
 import EventKit
