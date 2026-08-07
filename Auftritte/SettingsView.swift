@@ -38,7 +38,7 @@ struct SettingsView: View {
     private var kilometerpreis: Double = AppSettings.kilometerpreisDefault
     @AppStorage(AppSettings.kalenderIDKey)
     private var kalenderID: String = ""
-    @StateObject private var calendarService = CalendarService()
+    @EnvironmentObject private var calendarService: CalendarService
 
     var body: some View {
         NavigationStack {
@@ -105,4 +105,5 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+        .environmentObject(CalendarService())
 }

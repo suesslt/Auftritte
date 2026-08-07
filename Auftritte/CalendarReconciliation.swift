@@ -68,6 +68,10 @@ struct ReconciliationResult {
     var missingInCalendar: [Keynote] = []            // Gruppe 3: fehlt im Kalender
     var matching: [MatchedPair] = []                 // Gruppe 4: übereinstimmend
 
+    /// Alle ungepaarten Kandidaten unabhängig vom Status — Basis für den stillen
+    /// Auto-Abbruch; `missingInCalendar` bleibt die kuratierte Teilmenge für die UI.
+    var unpairedCandidates: [Keynote] = []
+
     var pendingLinkCount: Int { (timeMismatch + matching).filter(\.needsLink).count }
 
     var isEmpty: Bool {
@@ -155,11 +159,13 @@ enum ReconciliationEngine {
 
         result.matching.sort { $0.keynote.eventDate < $1.keynote.eventDate }
         result.timeMismatch.sort { $0.keynote.eventDate < $1.keynote.eventDate }
+        result.unpairedCandidates = candidates.enumerated()
+            .filter { !pairedKeynotes.contains($0.offset) }
+            .map(\.element)
         // «Fehlt im Kalender» nur für Auftritte, die einen Eintrag erwarten — ein bloss
         // angefragter Auftritt ohne Kalender-Event ist kein Befund.
-        result.missingInCalendar = candidates.enumerated()
-            .filter { !pairedKeynotes.contains($0.offset) && relevantStatuses.contains($0.element.status) }
-            .map(\.element)
+        result.missingInCalendar = result.unpairedCandidates
+            .filter { relevantStatuses.contains($0.status) }
         result.onlyInCalendar = events.enumerated()
             .filter { !pairedEvents.contains($0.offset) }
             .map(\.element)
@@ -185,12 +191,86 @@ enum ReconciliationEngine {
         .dateConfirmedFeeOffered, .feeConfirmed, .contentAgreed, .contractSigned
     ]
 
+    // MARK: - Stiller Abgleich (Auto-Link / Auto-Abbruch)
+
+    /// Auftritte, die der stille Abgleich abbrechen darf, wenn ihr Kalendereintrag
+    /// verschwunden ist: alle mit Kalender-Anspruch plus `requested` — ein angefragter
+    /// Auftritt, der einmal verknüpft war, verliert mit dem Event seine Grundlage.
+    /// Erledigte Vorgänge (`completed`/`invoiced`/`closed`) bleiben unangetastet.
+    static let autoCancelStatuses: Set<KeynoteStatus> = relevantStatuses.union([.requested])
+
+    /// Mindestalter einer Verknüpfung, bevor ihr Fehlen als Löschung gilt — schützt
+    /// vor der CloudKit-Race, bei der ein Auftritt vor seinem iCloud-Kalender-Event
+    /// auf ein Zweitgerät synct.
+    static let autoCancelGrace: TimeInterval = 24 * 3600
+
+    struct CalendarSyncActions {
+        var toLink: [ReconciliationResult.MatchedPair] = []
+        var toCancel: [Keynote] = []
+
+        var isEmpty: Bool { toLink.isEmpty && toCancel.isEmpty }
+    }
+
+    /// Entscheidet, was der stille Hintergrund-Abgleich tun darf.
+    ///
+    /// - `toLink`: exakte Zeit-Matches mit fehlender oder abweichender ID werden neu
+    ///   verknüpft — repariert Legacy-Einträge und instabile Cross-Device-IDs, bevor
+    ///   über einen Abbruch entschieden wird. Tages-Matches (`timeMismatch`) bleiben
+    ///   Nutzer-Entscheid im Abgleich-Sheet, sind aber gepaart und damit nie
+    ///   Abbruch-Kandidaten.
+    /// - `toCancel`: nur Auftritte, die einmal verknüpft waren (`calendarEventID`),
+    ///   deren Verknüpfung älter als die Grace-Period ist und deren Status in
+    ///   `autoCancelStatuses` liegt. Fail-safe: ohne `calendarLinkedAt` kein Abbruch.
+    /// - Safety-Valve: eine leere Event-Liste (leerer, falscher oder noch nicht
+    ///   gesyncter Kalender) löst nie Aktionen aus.
+    static func syncActions(
+        keynotes: [Keynote],
+        events: [ReconciliationEvent],
+        now: Date = .now
+    ) -> CalendarSyncActions {
+        guard !events.isEmpty else { return CalendarSyncActions() }
+
+        let result = reconcile(keynotes: keynotes, events: events, now: now)
+        var actions = CalendarSyncActions()
+        actions.toLink = result.matching.filter(\.needsLink)
+        actions.toCancel = result.unpairedCandidates.filter { keynote in
+            keynote.calendarEventID != nil &&
+            autoCancelStatuses.contains(keynote.status) &&
+            keynote.calendarLinkedAt.map { now.timeIntervalSince($0) > autoCancelGrace } ?? false
+        }
+        return actions
+    }
+
+    /// Bricht einen Auftritt ab, dessen Kalendereintrag entfernt wurde: Status auf
+    /// «Abgebrochen», Transparenz-Notiz in den Notizen, Verknüpfung gelöscht — eine
+    /// stale ID würde sonst das grüne Kalender-Badge zeigen und die Neuanlage eines
+    /// Termins blockieren.
+    static func applyCancel(to keynote: Keynote, at date: Date = .now) {
+        keynote.status = .cancelled
+        let stamp = date.formatted(
+            Date.FormatStyle(
+                date: .numeric,
+                time: .shortened,
+                locale: Locale(identifier: "de_CH"),
+                calendar: .home,
+                timeZone: .home
+            )
+        )
+        let note = "Automatisch abgebrochen am \(stamp) — Kalendereintrag wurde entfernt."
+        keynote.notes = keynote.notes.isEmpty ? note : keynote.notes + "\n\n" + note
+        keynote.calendarEventID = nil
+        keynote.calendarLinkedAt = nil
+    }
+
     // MARK: - Übernahme (Gruppe 1)
 
     /// Erstellt aus einem Kalender-Event einen neuen Auftritt.
     /// Hinweis: Bei mehreren übernommenen Occurrences desselben Serien-Events
     /// erhalten alle Auftritte dieselbe `calendarEventID` (EventKit vergibt pro Serie nur eine).
-    static func makeKeynote(from event: ReconciliationEvent) -> Keynote {
+    static func makeKeynote(
+        from event: ReconciliationEvent,
+        status: KeynoteStatus = .dateConfirmedFeeOffered
+    ) -> Keynote {
         let title = displayTitle(for: event)
         let minutes = max(event.end.timeIntervalSince(event.start) / 60, 15)
         return Keynote(
@@ -199,8 +279,9 @@ enum ReconciliationEngine {
             keynoteTitle: title,
             duration: minutes,
             location: event.location ?? "",
-            status: .dateConfirmedFeeOffered,
+            status: status,
             calendarEventID: event.eventIdentifier,
+            calendarLinkedAt: .now,
             notes: event.notes ?? ""
         )
     }

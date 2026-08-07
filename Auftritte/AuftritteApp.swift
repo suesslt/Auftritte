@@ -11,6 +11,10 @@ import SwiftData
 
 @main
 struct KeynotesApp: App {
+    /// Eine geteilte EventKit-Anbindung für die ganze App — nötig, damit der
+    /// Auto-Abgleich und die Views denselben Store und Berechtigungsstatus sehen.
+    @StateObject private var calendarService = CalendarService()
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Keynote.self,
@@ -35,12 +39,18 @@ struct KeynotesApp: App {
                 // Datumseingabe und SwiftUI-Datumsanzeige fix in der Heimatzeitzone,
                 // damit Termine auf Reisen nicht verschoben erscheinen.
                 .environment(\.timeZone, .home)
+                .environmentObject(calendarService)
                 .task {
                     runContactNameMigration()
                     runStatusMigration()
+                    runCalendarLinkStampMigration()
                 }
         }
         .modelContainer(sharedModelContainer)
+        // Zusätzlich auf Scene-Ebene injizieren: Environment-Objects erreichen
+        // navigationDestination-/Sheet-Inhalte nicht auf allen Plattformen
+        // zuverlässig, wenn sie nur auf der Root-View gesetzt sind.
+        .environmentObject(calendarService)
     }
 
     /// Splittet das Legacy-Feld `contactFullName` einmalig in `contactFirstName` / `contactLastName`.
@@ -83,6 +93,23 @@ struct KeynotesApp: App {
                 keynote.statusRaw = newStatus.rawValue
                 didMigrate = true
             }
+        }
+        if didMigrate {
+            try? context.save()
+        }
+    }
+
+    /// Stempelt bestehende Kalender-Verknüpfungen mit `calendarLinkedAt = .now`.
+    /// Gibt Bestandsdaten nach dem App-Update eine frische Grace-Period, damit der
+    /// erste automatische Kalender-Abgleich nie Auftritte massenweise abbricht.
+    /// Idempotent — wirkt nur auf verknüpfte Datensätze ohne Stempel.
+    private func runCalendarLinkStampMigration() {
+        let context = sharedModelContainer.mainContext
+        guard let keynotes = try? context.fetch(FetchDescriptor<Keynote>()) else { return }
+        var didMigrate = false
+        for keynote in keynotes where keynote.calendarEventID != nil && keynote.calendarLinkedAt == nil {
+            keynote.calendarLinkedAt = .now
+            didMigrate = true
         }
         if didMigrate {
             try? context.save()

@@ -28,6 +28,25 @@ class CalendarService: ObservableObject {
         return eventStore.defaultCalendarForNewEvents
     }
 
+    /// Explizit konfigurierter Zielkalender — im Gegensatz zu `targetCalendar`
+    /// ohne Fallback auf den Standardkalender. Der stille Auto-Abgleich darf nur
+    /// gegen einen bewusst gewählten Kalender laufen; ein Fallback auf den
+    /// falschen Kalender würde sämtliche Auftritte als «fehlend» abbrechen.
+    var configuredCalendar: EKCalendar? {
+        guard let id = AppSettings.kalenderID else { return nil }
+        return eventStore.calendar(withIdentifier: id)
+    }
+
+    /// Event-Snapshots des konfigurierten Kalenders für den stillen Abgleich —
+    /// ohne Ganztages-Events (gleicher Filter wie im manuellen Abgleich).
+    func fetchSyncEvents(from start: Date, to end: Date) -> [ReconciliationEvent] {
+        guard let calendar = configuredCalendar else { return [] }
+        let predicate = eventStore.predicateForEvents(withStart: start, end: end, calendars: [calendar])
+        return eventStore.events(matching: predicate)
+            .filter { !$0.isAllDay }
+            .map(ReconciliationEvent.init(event:))
+    }
+
     /// Beschreibbare Kalender für die Auswahl in den Einstellungen.
     func writableCalendars() -> [EKCalendar] {
         eventStore.calendars(for: .event)

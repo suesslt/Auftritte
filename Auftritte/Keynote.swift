@@ -29,6 +29,7 @@ final class Keynote {
     var statusRaw: String = KeynoteStatus.requested.rawValue
     var requestDate: Date = Date()
     var calendarEventID: String? // EventKit Event Identifier
+    var calendarLinkedAt: Date? // Zeitpunkt der letzten Kalender-Verknüpfung; Grace-Anker für den Auto-Abbruch
     var notes: String = ""
     var language: String = "" // Sprache des Auftritts
     var inAbklaerung: Bool = false
@@ -159,6 +160,7 @@ final class Keynote {
         status: KeynoteStatus = .requested,
         requestDate: Date = Date(),
         calendarEventID: String? = nil,
+        calendarLinkedAt: Date? = nil,
         notes: String = "",
         language: String = "",
         inAbklaerung: Bool = false,
@@ -191,6 +193,7 @@ final class Keynote {
         self.statusRaw = status.rawValue
         self.requestDate = requestDate
         self.calendarEventID = calendarEventID
+        self.calendarLinkedAt = calendarLinkedAt
         self.notes = notes
         self.language = language
         self.inAbklaerung = inAbklaerung

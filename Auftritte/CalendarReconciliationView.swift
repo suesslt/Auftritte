@@ -70,6 +70,7 @@ struct CalendarReconciliationView: View {
             Task { await load() }
         }) {
             SettingsView()
+                .environmentObject(calendarService)
         }
         .confirmationDialog(
             "Zeit angleichen",
@@ -169,6 +170,7 @@ struct CalendarReconciliationView: View {
                 throw CalendarError.accessDenied
             }
             keynote.calendarEventID = eventID
+            keynote.calendarLinkedAt = .now
             try modelContext.save()
         }
     }
@@ -180,6 +182,7 @@ struct CalendarReconciliationView: View {
             // Löschen/Ändern eines Auftritts die ganze Serie treffen.
             if !seriesIDs.contains(pair.event.eventIdentifier) {
                 pair.keynote.calendarEventID = pair.event.eventIdentifier
+                pair.keynote.calendarLinkedAt = .now
             }
             try modelContext.save()
         }
@@ -188,6 +191,7 @@ struct CalendarReconciliationView: View {
     private func pushTimeToCalendar(_ pair: ReconciliationResult.MatchedPair) {
         perform(rowID: "mismatch|\(pair.id)") {
             pair.keynote.calendarEventID = pair.event.eventIdentifier
+            pair.keynote.calendarLinkedAt = .now
             try await calendarService.updateEvent(eventID: pair.event.eventIdentifier, for: pair.keynote)
             try modelContext.save()
         }
@@ -196,6 +200,7 @@ struct CalendarReconciliationView: View {
     private func link(_ pair: ReconciliationResult.MatchedPair, rowID: String) {
         perform(rowID: rowID) {
             pair.keynote.calendarEventID = pair.event.eventIdentifier
+            pair.keynote.calendarLinkedAt = .now
             try modelContext.save()
         }
     }
@@ -205,6 +210,7 @@ struct CalendarReconciliationView: View {
             for pair in result.timeMismatch + result.matching
             where pair.needsLink && !seriesIDs.contains(pair.event.eventIdentifier) {
                 pair.keynote.calendarEventID = pair.event.eventIdentifier
+                pair.keynote.calendarLinkedAt = .now
             }
             try modelContext.save()
         }

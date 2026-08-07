@@ -17,6 +17,11 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var selectedKeynote: Keynote?
     @State private var newKeynoteID: PersistentIdentifier?
+    @State private var showingNewAuftritt = false
+    /// true, wenn der Kalendereintrag des neuen Auftritts von der App erstellt wurde —
+    /// beim Abbrechen der Neuanlage wird er dann wieder gelöscht (übernommene
+    /// Kalendereinträge bleiben selbstverständlich stehen).
+    @State private var newKeynoteDidCreateEvent = false
     @State private var selectedCategory: SidebarCategory? = .alleAuftritte
     @State private var statusFilter: KeynoteStatus?
     @State private var showingStats = false
@@ -27,8 +32,9 @@ struct ContentView: View {
     @State private var showingSettings = false
     @State private var showingKalenderAbgleich = false
     @State private var viewMode: ViewMode = .list
-    @StateObject private var calendarService = CalendarService()
+    @EnvironmentObject private var calendarService: CalendarService
     @StateObject private var errorHandler = ErrorHandler()
+    @StateObject private var autoSync = CalendarAutoSync()
 
     enum ViewMode: String, CaseIterable, Identifiable {
         case list = "Liste"
@@ -114,9 +120,11 @@ struct ContentView: View {
                             onCancel: { handleEditorCancel(for: keynote) },
                             onSave: {
                                 newKeynoteID = nil
+                                newKeynoteDidCreateEvent = false
                                 selectedKeynote = nil
                             }
                         )
+                        .environmentObject(calendarService)
                     }
                     .sheet(isPresented: $showingStats) {
                         NavigationStack {
@@ -130,12 +138,21 @@ struct ContentView: View {
                     }
                     .sheet(isPresented: $showingSettings) {
                         SettingsView()
+                            .environmentObject(calendarService)
                     }
                     .sheet(isPresented: $showingCSVImport) {
                         CSVImportView()
                     }
                     .sheet(isPresented: $showingKalenderAbgleich) {
                         CalendarReconciliationView(calendarService: calendarService)
+                    }
+                    .sheet(isPresented: $showingNewAuftritt) {
+                        NewAuftrittSheet { keynote, didCreateEvent in
+                            newKeynoteID = keynote.persistentModelID
+                            newKeynoteDidCreateEvent = didCreateEvent
+                            selectedKeynote = keynote
+                        }
+                        .environmentObject(calendarService)
                     }
                     .sheet(isPresented: $showingCSVExport) {
                         CSVExportView(keynotes: filteredKeynotes)
@@ -151,6 +168,7 @@ struct ContentView: View {
         }
         .task {
             _ = await calendarService.requestAccess()
+            autoSync.start(context: modelContext, calendarService: calendarService)
         }
         .errorAlert(errorHandler: errorHandler)
         .onChange(of: selectedCategory) { _, _ in selectedKeynote = nil }
@@ -161,6 +179,7 @@ struct ContentView: View {
             if old.persistentModelID == newKeynoteID, isDraftKeynote(old) {
                 modelContext.delete(old)
                 newKeynoteID = nil
+                newKeynoteDidCreateEvent = false
             }
         }
     }
@@ -340,18 +359,23 @@ struct ContentView: View {
     // MARK: - Actions
 
     private func createNewKeynote() {
-        let keynote = Keynote()
-        modelContext.insert(keynote)
-        newKeynoteID = keynote.persistentModelID
-        selectedKeynote = keynote
+        showingNewAuftritt = true
     }
 
     private func handleEditorCancel(for keynote: Keynote) {
-        // Cancel wird nur für neue Keynotes ausgelöst → immer löschen
+        // Cancel wird nur für neue Keynotes ausgelöst → immer löschen.
+        // Hat die App den Kalendereintrag selbst erstellt, wird er mitgelöscht —
+        // ein übernommener bestehender Eintrag bleibt im Kalender stehen.
         if keynote.persistentModelID == newKeynoteID {
+            if newKeynoteDidCreateEvent, let eventID = keynote.calendarEventID {
+                Task {
+                    try? await calendarService.deleteEvent(eventID: eventID)
+                }
+            }
             modelContext.delete(keynote)
         }
         newKeynoteID = nil
+        newKeynoteDidCreateEvent = false
         selectedKeynote = nil
     }
 
@@ -484,4 +508,5 @@ private struct DeleteAllConfirmationView: View {
 #Preview {
     ContentView()
         .modelContainer(previewContainer())
+        .environmentObject(CalendarService())
 }
